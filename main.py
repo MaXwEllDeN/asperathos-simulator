@@ -35,7 +35,7 @@ def worker(queue, hit_rate):
 
             status = process_item(item, hit_rate)
                     
-            if status == True:
+            if status:
                 queue.complete_item(item)
             else:
                 queue.rewind_item(item)
