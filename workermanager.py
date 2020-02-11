@@ -14,7 +14,6 @@ class WorkerManager:
 
     def launch_replica(self):
         w = WorkerThread(self.queue, self.hit_rate)
-        #threading.Thread(target=self.__worker)
         self.__workers.append(w)
 
         w.start()
@@ -28,6 +27,9 @@ class WorkerManager:
             return True
 
         return False
+
+    def get_replicas_count(self):
+        return len(self.__workers)
 
 class WorkerThread(threading.Thread):
     queue = None

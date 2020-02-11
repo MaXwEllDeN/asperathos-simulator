@@ -1,6 +1,7 @@
 from aspqueue import Queue
 from pidcontroller import PIDController
 from workermanager import WorkerManager
+from aspplots import generate_plots
 
 import threading
 import argparse
@@ -13,10 +14,12 @@ URL_WORKLOAD_327 = "https://gist.githubusercontent.com/MaXwEllDeN/\
 URL_WORKLOAD_800 = "https://gist.githubusercontent.com/MaXwEllDeN/\
 88f6975f8f089b69a4a1d530e9b77236/raw/4b2b6fc64177c5232dc4e67703d6a350e7fdee39/workload800.txt"
 
-KP, KI, KD = 0.5, 0.5, 0.3
+KP, KI, KD = 3, 1, 0.5
 
-def monitor(queue, desired_time, wmanager):
+def monitor(queue, wmanager):
     starting_time = time.time()
+
+    simulation_data = []
 
     print("Vamo dale")
     jpps = 0 # Job progress per second
@@ -26,77 +29,93 @@ def monitor(queue, desired_time, wmanager):
     list_jpps = []
     avg_jpps = 0
     estimated_time = 0
-
-    pid = PIDController(KP, KI, KD, interval)
-
-    reference_jpps = 100 / desired_time
-
+    execution_time = 0
+   
     while (queue.get_progress() < 100):
         progress = queue.get_progress()
+
         jpps = (progress - last_progress) / interval
-        list_jpps.append(jpps)
         last_progress = progress
-        
+
+        list_jpps.append(jpps)
+      
         avg_jpps = sum(list_jpps) / len(list_jpps)
 
-        jpps_error = reference_jpps - avg_jpps
-        control_action = pid.work(jpps_error)
+        replicas = wmanager.get_replicas_count()
 
-        thread_count = threading.active_count() - 1
-        print("Progress: {}% with {} replica(s).".format(round(progress, 2), thread_count))
+        print("Progress: {}% with {} replica(s).".format(round(progress, 2), replicas))
         print("Average JP/s: {}".format(round(avg_jpps, 2)))
 
         if (avg_jpps != 0):
-            estimated_time = 100/avg_jpps            
+            estimated_time = 100 / avg_jpps            
             print("Estimated time: {} seconds".format(round(estimated_time, 2)))
         else:
             print("Estimated time: infinite.")
 
-        print("Error: {} jp/s".format(jpps_error))
-        print("Control Action: {}".format(control_action))
-
-        if thread_count < round(control_action, 0):
-            increasing = int(round(control_action, 0) - thread_count)
+        """
+        if replicas < round(control_action, 0):
+            increasing = int(round(control_action, 0) - replicas)
 
             for _ in range(0, increasing):
                 wmanager.launch_replica()
 
             print("{} new replicas launched.".format(increasing))
-        elif thread_count > round(control_action, 0):
-            decreasing = int(thread_count - round(control_action, 0))
+        elif replicas > round(control_action, 0):
+            decreasing = int(replicas - round(control_action, 0))
 
             for _ in range(0, decreasing):
                 wmanager.remove_replica()
 
             print("Deleting {} replicas...".format(decreasing))
+        """
 
         print("--------------------")
+
+        execution_time = time.time() - starting_time
+        model = {
+            "time": execution_time,
+            "job_progress": progress,
+            "avg_jpps": avg_jpps,
+            "replicas": replicas,
+        }
+
+        simulation_data.append(model)
+
+
         time.sleep(interval)
 
-    execution_time = time.time() - starting_time
 
     print("Execution time: {0:.2f} seconds.".format(execution_time))    
     print("Estimated time: {} seconds, deviation: {} seconds.".format(
         round(estimated_time, 2), round(estimated_time - execution_time, 2)))
     
-    print("Deviation from desired time: {} seconds.".format(execution_time - desired_time))
-    return True
+    return simulation_data
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("execution_time", help="desired execution time", type=int)
-    #parser.add_argument("replicas", help="number of worker replicas that should be deployed", type=int)
+    #parser.add_argument("execution_time", help="desired execution time", type=int)
+    parser.add_argument("replicas", help="number of worker replicas that should be deployed", type=int)
     parser.add_argument("hit_rate", help="probability of successfully processing an item", type=int)
     args = parser.parse_args()
 
     if (args.hit_rate <= 0 or args.hit_rate > 100):
-        print("hit_rate shall lay between 1 and 100 percent")
+        print("hit_rate must be between 1 and 100 percent")
         exit()
 
     print("Vamo dale")
+
     try:
         queue = Queue(URL_WORKLOAD_800)
         wmanager = WorkerManager(queue, hit_rate=args.hit_rate)
-        monitor(queue, args.execution_time, wmanager)
+
+        for _ in range(0, args.replicas):
+            wmanager.launch_replica()
+
+        simulation_data = monitor(queue, wmanager)
+
+        generate_plots(simulation_data)
     except KeyboardInterrupt:
         print("Bye bye")
+
+
+
