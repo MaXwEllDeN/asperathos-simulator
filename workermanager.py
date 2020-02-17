@@ -1,3 +1,4 @@
+import time
 import requests
 import threading
 
@@ -41,7 +42,7 @@ class WorkerThread(threading.Thread):
         self.queue = queue
         self.hit_rate = hit_rate
   
-    def stop(self): 
+    def stop(self):
         self._stop.set() 
   
     def stopped(self): 
@@ -50,8 +51,8 @@ class WorkerThread(threading.Thread):
     def __process_item(self, item):
         url = item.content
 
-        req = requests.get(url)
-        req.text
+        #req = requests.get(url)
+        time.sleep(0.2)
 
         if randrange(0, 100) <= self.hit_rate:
             return True

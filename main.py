@@ -16,6 +16,22 @@ URL_WORKLOAD_800 = "https://gist.githubusercontent.com/MaXwEllDeN/\
 
 KP, KI, KD = 3, 1, 0.5
 
+""" Controller
+if replicas < round(control_action, 0):
+    increasing = int(round(control_action, 0) - replicas)
+
+    for _ in range(0, increasing):
+        wmanager.launch_replica()
+
+    print("{} new replicas launched.".format(increasing))
+elif replicas > round(control_action, 0):
+    decreasing = int(replicas - round(control_action, 0))
+
+    for _ in range(0, decreasing):
+        wmanager.remove_replica()
+
+    print("Deleting {} replicas...".format(decreasing))
+"""
 def monitor(queue, wmanager):
     starting_time = time.time()
 
@@ -24,50 +40,31 @@ def monitor(queue, wmanager):
     print("Vamo dale")
     jpps = 0 # Job progress per second
     last_progress = 0
-    interval = 1
+    last_completed = 0
+    interval = 0.01
 
-    list_jpps = []
-    avg_jpps = 0
     estimated_time = 0
     execution_time = 0
+
+    jpps_array = []
    
-    while (queue.get_progress() < 100):
+    while True:
         progress = queue.get_progress()
-
         jpps = (progress - last_progress) / interval
-        last_progress = progress
+        last_progress = progress        
 
-        list_jpps.append(jpps)
-      
-        avg_jpps = sum(list_jpps) / len(list_jpps)
+        jpps_array.append(jpps)
+        avg_jpps = sum(jpps_array) / len(jpps_array)
+
+        completed = queue.get_completed_counter()        
+        jps = (completed - last_completed) / interval
+        last_completed = completed
 
         replicas = wmanager.get_replicas_count()
 
         print("Progress: {}% with {} replica(s).".format(round(progress, 2), replicas))
-        print("Average JP/s: {}".format(round(avg_jpps, 2)))
-
-        if (avg_jpps != 0):
-            estimated_time = 100 / avg_jpps            
-            print("Estimated time: {} seconds".format(round(estimated_time, 2)))
-        else:
-            print("Estimated time: infinite.")
-
-        """
-        if replicas < round(control_action, 0):
-            increasing = int(round(control_action, 0) - replicas)
-
-            for _ in range(0, increasing):
-                wmanager.launch_replica()
-
-            print("{} new replicas launched.".format(increasing))
-        elif replicas > round(control_action, 0):
-            decreasing = int(replicas - round(control_action, 0))
-
-            for _ in range(0, decreasing):
-                wmanager.remove_replica()
-
-            print("Deleting {} replicas...".format(decreasing))
-        """
+        print("JP/s: {}".format(round(jpps, 2)))
+        print("J/s: {}".format(round(jps, 2)))
 
         print("--------------------")
 
@@ -75,15 +72,20 @@ def monitor(queue, wmanager):
         model = {
             "time": execution_time,
             "job_progress": progress,
+            "jpps": jpps,
+            "jps": jps,
             "avg_jpps": avg_jpps,
             "replicas": replicas,
+            "completed": completed
         }
 
         simulation_data.append(model)
 
 
-        time.sleep(interval)
+        if queue.get_progress() == 100:
+            break
 
+        time.sleep(interval)
 
     print("Execution time: {0:.2f} seconds.".format(execution_time))    
     print("Estimated time: {} seconds, deviation: {} seconds.".format(
@@ -105,7 +107,7 @@ if __name__ == "__main__":
     print("Vamo dale")
 
     try:
-        queue = Queue(URL_WORKLOAD_800)
+        queue = Queue(URL_WORKLOAD_327)
         wmanager = WorkerManager(queue, hit_rate=args.hit_rate)
 
         for _ in range(0, args.replicas):
@@ -117,5 +119,4 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("Bye bye")
 
-
-
+# Execution time: 161.22 seconds.

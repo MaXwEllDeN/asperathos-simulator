@@ -104,6 +104,9 @@ class Queue:
         total_items = len(self.__items_completed) + len(self.__items_processing) + len(self.__items_waiting)
         return 100 * len(self.__items_completed) / total_items
 
+    def get_completed_counter(self):
+        return len(self.__items_completed)
+
 """
     #Deprecated
     def check_duplicated_completed(self):
