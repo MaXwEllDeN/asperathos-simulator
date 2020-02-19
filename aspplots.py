@@ -4,15 +4,17 @@ import numpy as np
 def generate_plots(simulation_data):
     time_array = []
     jp_array = []
-    rp_array = []
     avg_array = []
+    setpoint_array = []
+    avg_setpoint_array = []
     completed_array = []
 
     for item in simulation_data:
         time_array.append(item["time"])
         jp_array.append(item["job_progress"])
-        rp_array.append(item["replicas"])
         avg_array.append(item["avg_jpps"])
+        setpoint_array.append(item["setpoint"])
+        avg_setpoint_array.append(item["avg_setpoint"])
         completed_array.append(item["completed"])
 
 
@@ -25,27 +27,12 @@ def generate_plots(simulation_data):
     plt.legend()
     plt.grid(True)
 
-
     plt.subplot(3, 1, 2)
     plt.plot(time_array, completed_array, label='completed jobs')
 
     plt.title("Competed jobs")
     plt.legend()
     plt.grid(True)
-    """
-    plt.subplot(3, 1, 2)
-    plt.plot(time_array, rp_array, label='replicas')
-
-    plt.title("Control Action")
-    plt.legend()
-    plt.grid(True)
-
-    plt.subplot(3, 1, 3)
-    plt.plot(time_array, jpps_array, label='JP/s')
-    
-    plt.title("Job progress per second")
-    plt.legend()
-    """
 
     avg_avg_jpps = []
     avg = sum(avg_array) / len(avg_array)
@@ -55,8 +42,9 @@ def generate_plots(simulation_data):
 
     plt.subplot(3, 1, 3)
 
-    plt.plot(time_array, avg_array, label='Avg j/s')
+    plt.plot(time_array, avg_array, label='Avg JP/s')
     plt.plot(time_array, avg_avg_jpps, color='orange', linestyle='dashed', label='Avg: {}'.format(avg))
+    plt.plot(time_array, avg_setpoint_array, color='green', linestyle='dashed', label='Avg JP/s setpoint')
 
     plt.title("Average jobs per second")
     plt.legend()

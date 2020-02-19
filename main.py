@@ -3,6 +3,7 @@ from pidcontroller import PIDController
 from workermanager import WorkerManager
 from aspplots import generate_plots
 
+from numpy import absolute
 import threading
 import argparse
 import requests
@@ -32,8 +33,13 @@ elif replicas > round(control_action, 0):
 
     print("Deleting {} replicas...".format(decreasing))
 """
+
 def monitor(queue, wmanager):
-    starting_time = time.time()
+    now = 0
+    starting_time = now
+    #starting_time = time.time()
+
+    #Process variable: Jp/s
 
     simulation_data = []
 
@@ -43,10 +49,12 @@ def monitor(queue, wmanager):
     last_completed = 0
     interval = 0.01
 
-    estimated_time = 0
+    target_time = 15.68
     execution_time = 0
 
     jpps_array = []
+    setpoint_array = []
+    setpoint = 0
    
     while True:
         progress = queue.get_progress()
@@ -55,7 +63,7 @@ def monitor(queue, wmanager):
 
         jpps_array.append(jpps)
         avg_jpps = sum(jpps_array) / len(jpps_array)
-
+    
         completed = queue.get_completed_counter()        
         jps = (completed - last_completed) / interval
         last_completed = completed
@@ -63,33 +71,45 @@ def monitor(queue, wmanager):
         replicas = wmanager.get_replicas_count()
 
         print("Progress: {}% with {} replica(s).".format(round(progress, 2), replicas))
-        print("JP/s: {}".format(round(jpps, 2)))
-        print("J/s: {}".format(round(jps, 2)))
+        print("Avg JP/s: {}".format(round(avg_jpps, 2)))
+        print("Execution Time JP/s: {}".format(round(execution_time, 2)))
+
+        if execution_time > target_time:
+            print("We are late.")
+        else:            
+            setpoint = (100 - progress) / (target_time - execution_time)
+
+            if (absolute(setpoint) > 20):
+                setpoint = 0
+
+            setpoint_array.append(setpoint)
+            avg_setpoint = sum(setpoint_array) / len(setpoint_array)
+
+            print("Avg Setpoint JP/s: {}".format(round(setpoint, 2)))
 
         print("--------------------")
 
-        execution_time = time.time() - starting_time
+        execution_time = now - starting_time
         model = {
             "time": execution_time,
             "job_progress": progress,
-            "jpps": jpps,
-            "jps": jps,
-            "avg_jpps": avg_jpps,
-            "replicas": replicas,
-            "completed": completed
+            "replicas": replicas,            
+            "avg_jpps": avg_jpps,            
+            "completed": completed,         
+            "setpoint": setpoint,
+            "avg_setpoint": avg_setpoint
         }
 
         simulation_data.append(model)
 
+        now += interval
 
         if queue.get_progress() == 100:
             break
 
         time.sleep(interval)
 
-    print("Execution time: {0:.2f} seconds.".format(execution_time))    
-    print("Estimated time: {} seconds, deviation: {} seconds.".format(
-        round(estimated_time, 2), round(estimated_time - execution_time, 2)))
+    print("Execution time: {0:.2f} seconds.".format(execution_time))
     
     return simulation_data
 
