@@ -47,7 +47,7 @@ def monitor(queue, wmanager):
     jpps = 0 # Job progress per second
     last_progress = 0
     last_completed = 0
-    interval = 0.01
+    interval = 2
 
     target_time = 15.68
     execution_time = 0
@@ -93,11 +93,10 @@ def monitor(queue, wmanager):
         model = {
             "time": execution_time,
             "job_progress": progress,
-            "replicas": replicas,            
             "avg_jpps": avg_jpps,            
             "completed": completed,         
             "setpoint": setpoint,
-            "avg_setpoint": avg_setpoint
+            "avg_setpoint": 0
         }
 
         simulation_data.append(model)
