@@ -29,6 +29,7 @@ def process_client(data, q):
 
 
 def run():
+
     # for dev purposes only: bypass redis and process static item.
     if DEV_MODE and DEV_ITEM is not None:
         print('INFO:Running in dev-mode with: %s' % DEV_ITEM)
@@ -52,6 +53,7 @@ def run():
     queue = rediswq.RedisWQ(name=redis_queue, host=redis_host, port=redis_port)
     print("INFO:Connection established")
     print("INFO:Worker with sessionID: " + queue.sessionID())
+
     while not queue.empty():
         print("INFO:Consulting work queue for the next item.")
         object_url = queue.lease(lease_secs=LEASE_SECS, block=True, timeout=2)
