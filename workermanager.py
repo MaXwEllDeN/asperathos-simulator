@@ -5,32 +5,63 @@ import threading
 from random import randrange
 
 class WorkerManager:
+    PROCESSING_TIME = 0.05
+    env = None
     queue = None
     hit_rate = None
     __workers = []
 
-    def __init__(self, queue, hit_rate=100):
+    def __init__(self, env, queue, hit_rate=100):
+        self.env = env
         self.queue = queue
         self.hit_rate = hit_rate
 
     def launch_replica(self):
-        w = WorkerThread(self.queue, self.hit_rate)
+        w = self.env.process(self.worker())
         self.__workers.append(w)
-
-        w.start()
+        #w = WorkerThread(self.env, self.queue, self.hit_rate)
+        #w.start()
 
         return True
 
     def remove_replica(self):
         if len(self.__workers) > 0:
             w = self.__workers.pop()
-            w.stop()
+            #w.stop()
+
+
             return True
 
         return False
 
     def get_replicas_count(self):
         return len(self.__workers)
+
+    def __process_item(self, item):
+        url = item.content
+
+        #req = requests.get(url)
+
+        if randrange(0, 100) <= self.hit_rate:
+            return True
+        else:
+            return False
+
+    def worker(self):
+        while self.queue.get_progress() < 100:            
+            item = self.queue.get_item_to_process()
+
+            if item == None:
+                continue
+
+            status = self.__process_item(item)
+
+            if status:
+                self.queue.complete_item(item)
+            else:
+                self.queue.rewind_item(item)
+
+            yield self.env.timeout(self.PROCESSING_TIME)
 
 class WorkerThread(threading.Thread):
     queue = None
