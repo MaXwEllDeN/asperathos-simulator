@@ -1,4 +1,5 @@
 import time
+import simpy
 import requests
 import threading
 
@@ -19,20 +20,17 @@ class WorkerManager:
     def launch_replica(self):
         w = self.env.process(self.worker())
         self.__workers.append(w)
-        #w = WorkerThread(self.env, self.queue, self.hit_rate)
-        #w.start()
-
-        return True
+        
+        return w
 
     def remove_replica(self):
-        if len(self.__workers) > 0:
-            w = self.__workers.pop()
-            #w.stop()
+        try:
+            if len(self.__workers) > 0:
+                w = self.__workers.pop()
+                w.interrupt("Finish")
+        except Exception as e:
+            pass
 
-
-            return True
-
-        return False
 
     def get_replicas_count(self):
         return len(self.__workers)
@@ -48,59 +46,20 @@ class WorkerManager:
             return False
 
     def worker(self):
-        while self.queue.get_progress() < 100:            
-            item = self.queue.get_item_to_process()
+        try:
+            while self.queue.get_progress() < 100:            
+                item = self.queue.get_item_to_process()
 
-            if item == None:
-                continue
+                if item == None:
+                    continue
 
-            status = self.__process_item(item)
+                status = self.__process_item(item)
 
-            if status:
-                self.queue.complete_item(item)
-            else:
-                self.queue.rewind_item(item)
+                if status:
+                    self.queue.complete_item(item)
+                else:
+                    self.queue.rewind_item(item)
 
-            yield self.env.timeout(self.PROCESSING_TIME)
-
-class WorkerThread(threading.Thread):
-    queue = None
-    hit_rate = 100
-
-    def __init__(self, queue, hit_rate, *args, **kwargs):
-        super(WorkerThread, self).__init__(*args, **kwargs) 
-        self._stop = threading.Event() 
-        self.queue = queue
-        self.hit_rate = hit_rate
-  
-    def stop(self):
-        self._stop.set() 
-  
-    def stopped(self): 
-        return self._stop.isSet() 
-  
-    def __process_item(self, item):
-        url = item.content
-
-        #req = requests.get(url)
-        time.sleep(0.2)
-
-        if randrange(0, 100) <= self.hit_rate:
-            return True
-        else:
-            return False
-
-    def run(self):
-        while not self.stopped() and self.queue.get_progress() < 100:            
-            item = self.queue.get_item_to_process()
-            if item == None:
-                continue
-
-            status = self.__process_item(item)
-                    
-            if status:
-                self.queue.complete_item(item)
-            else:
-                self.queue.rewind_item(item)
-
-        return True
+                yield self.env.timeout(self.PROCESSING_TIME)
+        except simpy.exceptions.Interrupt:
+            pass

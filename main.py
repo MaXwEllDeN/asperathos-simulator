@@ -1,14 +1,10 @@
 import simpy
 from aspqueue import Queue
 from workermanager import WorkerManager
-#from pidcontroller import PIDController
-#from aspplots import generate_plots
+from pidcontroller import PIDController
+from aspplots import generate_plots
 
-#from numpy import absolute
-#import threading
 import argparse
-#import requests
-#import time
 
 URL_WORKLOAD_327 = "https://gist.githubusercontent.com/MaXwEllDeN/\
 2a1b9bb13dae44241e358e14b585da6f/raw/654c4f29af5d751ff0a9079b5be72305175ad501/workload327.txt"
@@ -16,9 +12,22 @@ URL_WORKLOAD_327 = "https://gist.githubusercontent.com/MaXwEllDeN/\
 URL_WORKLOAD_800 = "https://gist.githubusercontent.com/MaXwEllDeN/\
 88f6975f8f089b69a4a1d530e9b77236/raw/4b2b6fc64177c5232dc4e67703d6a350e7fdee39/workload800.txt"
 
-KP, KI, KD = 3, 1, 0.5
+KP, KI, KD = 0.1, 0.1, 0
+
+CONTROLLER_ACTUATION_TIME = 3
+MONITOR_CHECK_INTERVAL = 2
+
+MONITOR_DATA = []
+
+def publishMonitorData(model):
+    MONITOR_DATA.append(model)
+
+def getMonitorData():
+    return MONITOR_DATA
 
 def monitor(env, queue, wmanager):
+    desired_time = 15 # seconds
+
     # Process variable: Jp/s    
     starting_time = env.now
     simulation_data = []
@@ -26,63 +35,71 @@ def monitor(env, queue, wmanager):
     jpps = 0 # Job progress per second
 
     last_progress = 0
-    last_completed = 0
-    CHECK_INTERVAL = 2
-
     execution_time = 0
+
+    setpoint = 100 / desired_time # wanted_jpps
   
     while True:
         progress = queue.get_progress()
-        jpps = (progress - last_progress) / CHECK_INTERVAL
+        jpps = (progress - last_progress) / MONITOR_CHECK_INTERVAL
         last_progress = progress
    
         replicas = wmanager.get_replicas_count()
         execution_time = env.now - starting_time
 
+        error = setpoint - jpps
+
         print("Progress: {}% with {} replica(s).".format(round(progress, 2), replicas))
-        print("Execution Time JP/s: {}".format(round(execution_time, 2)))
+        print("Job Progress per seconds: {}".format(round(jpps, 2)))
+        print("Execution Time: {}".format(round(execution_time, 2)))
         print("-----------")
 
         model = {
             "time": execution_time,
             "job_progress": progress,
-            "replicas": replicas
+            "jpps": jpps,
+            "replicas": replicas,
+            "error": error,
+            "setpoint": setpoint
         }
 
-        simulation_data.append(model)
+        publishMonitorData(model)
 
         if queue.get_progress() == 100:
             break
 
-        yield env.timeout(CHECK_INTERVAL)
+        yield env.timeout(MONITOR_CHECK_INTERVAL)
 
     print("Execution time: {0:.2f} seconds.".format(execution_time))
 
-def controller(env, queue, wmanager):
-    ACTUATION_TIME = 3
+def pid_controller(env, wmanager):
+    # dt Must be the rating at which the error is updated
+    controller = PIDController(KP, KI, KD, MONITOR_CHECK_INTERVAL)
 
-    wmanager.launch_replica()
-    wmanager.launch_replica()
-    while True:
-        yield env.timeout(ACTUATION_TIME)
+    data = getMonitorData()[-1]
 
-    """ Controller
-    if replicas < round(control_action, 0):
-        increasing = int(round(control_action, 0) - replicas)
+    while data["job_progress"] < 100:
+        data = getMonitorData()[-1]
+        replicas = data["replicas"]
+        control_action = controller.work(data["error"])
 
-        for _ in range(0, increasing):
-            wmanager.launch_replica()
+        if replicas < round(control_action, 0):
+            increasing = int(round(control_action, 0) - replicas)
 
-        print("{} new replicas launched.".format(increasing))
-    elif replicas > round(control_action, 0):
-        decreasing = int(replicas - round(control_action, 0))
+            for _ in range(0, increasing):
+                wmanager.launch_replica()
 
-        for _ in range(0, decreasing):
-            wmanager.remove_replica()
+            print("{} new replicas launched.".format(increasing))
+        elif replicas > round(control_action, 0):
+            decreasing = int(replicas - round(control_action, 0))
+            decreasing = min(decreasing, replicas)
 
-        print("Deleting {} replicas...".format(decreasing))
-    """
-    pass
+            for _ in range(0, decreasing):
+                wmanager.remove_replica()
+
+            print("Deleting {} replicas...".format(decreasing))
+
+        yield env.timeout(CONTROLLER_ACTUATION_TIME)
 
 def main():
     SIMULATION_TIME = 150
@@ -92,12 +109,14 @@ def main():
 
     wmanager = WorkerManager(env, queue)
     env.process(monitor(env, queue, wmanager))
-    env.process(controller(env, queue, wmanager))
+    env.process(pid_controller(env, wmanager))
 
     try:
         env.run(until=SIMULATION_TIME)
     except KeyboardInterrupt:
         print("Bye bye")
+
+    generate_plots(MONITOR_DATA)
 
 if __name__ == "__main__":
     main()
