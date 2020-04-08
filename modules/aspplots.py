@@ -5,41 +5,36 @@ def generate_plots(simulation_data):
     time_array = []
     job_progress_array = []
     speed_array = []
-    error_array = []
     replicas_array = []
-    setpoint_array = []
 
     for item in simulation_data:
         time_array.append(item["time"])
         job_progress_array.append(item["job_progress"])
         speed_array.append(item["jpps"])
-        error_array.append(item["error"])
         replicas_array.append(item["replicas"])
-        setpoint_array.append(item["setpoint"])
 
     plt.figure("Simulation Data")
+    plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=None, hspace=0.5)
 
-    plt.subplot(3, 1, 1)
-    plt.plot(time_array, job_progress_array, label='Job Progress')
+    plt.subplot(2, 1, 1)
+    plt.plot(time_array, job_progress_array, label="Job Progress")
+    plt.text(time_array[-1]/2, 20, f"Execution time: {time_array[-1]} seconds")
+    plt.ylabel("Job Progress (%)")
     
-    plt.title("Job Progress")
+    plt.title("Simulation Data with step = {}".format(max(replicas_array)))
     plt.legend()
+    plt.xlabel("Time (s)")
     plt.grid(True)
 
-    plt.subplot(3, 1, 2)
-    plt.plot(time_array, speed_array, label='Speed')
-    plt.plot(time_array, setpoint_array, color='green', linestyle='dashed', label='Speed Setpoint')
+    plt.subplot(2, 1, 2)
+    plt.plot(time_array, speed_array, label="Speed(JP/s)")
     plt.plot(time_array, replicas_array, color='orange', linestyle='dashed', label="Replicas")
 
-    plt.title("JP/s")
     plt.legend()
     plt.grid(True)
 
-    plt.subplot(3, 1, 3)
-    plt.plot(time_array, error_array, label='Error')
-
-    plt.title("Error")
     plt.legend()
+    plt.xlabel("Time (s)")
     plt.grid(True)
 
     plt.show()

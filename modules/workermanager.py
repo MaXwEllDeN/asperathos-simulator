@@ -6,7 +6,7 @@ import threading
 from random import randrange
 
 class WorkerManager:
-    PROCESSING_TIME = 0.05
+    PROCESSING_TIME = 0.2
     env = None
     queue = None
     hit_rate = None

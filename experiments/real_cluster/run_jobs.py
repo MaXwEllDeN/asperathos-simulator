@@ -9,20 +9,27 @@ from aspplots import generate_plots
 SUBMIT_ENDPOINT = "http://0.0.0.0:1500/submissions"
 REPORT_ENDPOINT = "http://0.0.0.0:1500/submissions/{}/report"
 
+URL_WORKLOAD_327 = "https://gist.githubusercontent.com/MaXwEllDeN/\
+2a1b9bb13dae44241e358e14b585da6f/raw/654c4f29af5d751ff0a9079b5be72305175ad501/workload327.txt"
+
+URL_WORKLOAD_800 = "https://gist.githubusercontent.com/MaXwEllDeN/\
+88f6975f8f089b69a4a1d530e9b77236/raw/4b2b6fc64177c5232dc4e67703d6a350e7fdee39/workload800.txt"
+
 parser = argparse.ArgumentParser()
 parser.add_argument("step", help="Step amplitude.", type=int)
 parser.add_argument("dir", help="Directory file.")
 parser.add_argument("plot")
 
-def submit_job(steps=1):
+def submit_job(step=1):
 	job_json = {'plugin': 'kubejobs', 'plugin_info': {'password': 'senha', 'username': 'admin', 'control_plugin': 'kubejobs', 'enable_visualizer': True, 'monitor_info': {'expected_time': 20}, 'env_vars': {}, 'img': 'maxwellden/quickstart:demo', 'redis_workload': '', 'visualizer_info': {'datasource_type': 'influxdb'}, 'init_size': 1, 'job_resources_lifetime': 800, 'visualizer_plugin': 'k8s-grafana', 'enable_detailed_report': True, 'cmd': ['python', '/app/run.py'], 'control_parameters': {'metric_source': 'redis', 'min_rep': 7, 'trigger_up': 0, 'actuation_size': 1, 'schedule_strategy': 'default', 'actuator': 'k8s_replicas', 'trigger_down': 0, 'max_size': 10, 'heuristic_options': {'derivative_gain': 0, 'proportional_gain': 0.1, 'integral_gain': 0}, 'check_interval': 5, 'max_rep': 7}, 'monitor_plugin': 'kubejobs'}, 'enable_auth': False}
 
-	job_json["plugin_info"]["control_parameters"]["min_rep"] = steps
-	job_json["plugin_info"]["control_parameters"]["max_rep"] = steps
-	job_json["plugin_info"]["control_parameters"]["max_rep"] = steps
-	job_json["plugin_info"]["control_parameters"]["check_interval"] = 0.5
-	job_json["plugin_info"]["redis_workload"] = "https://gist.githubusercontent.com/MaXwEllDeN/2a1b9bb13dae44241e358e14b585da6f/raw/654c4f29af5d751ff0a9079b5be72305175ad501/workload327.txt"
-
+	job_json["plugin_info"]["control_parameters"]["min_rep"] = step
+	job_json["plugin_info"]["control_parameters"]["max_rep"] = step
+	job_json["plugin_info"]["control_parameters"]["actuation_size"] = step	
+	job_json["plugin_info"]["control_parameters"]["check_interval"] = 1
+	#job_json["plugin_info"]["control_parameters"]["check_interval"] = 0.5 <- Asperathos will automatically round down to zero
+	job_json["plugin_info"]["redis_workload"] = URL_WORKLOAD_800
+        
 	r = requests.post(SUBMIT_ENDPOINT, json=job_json)
 
 	return r.json()["job_id"]
@@ -34,7 +41,8 @@ def save_csv(json_data, file):
 	sorted_data = []
 
 	for item in json_data.items():
-		item_time = time.mktime(datetime.datetime.strptime(item[0], "%Y-%m-%dT%H:%M:%S.%fZ").timetuple())
+		#item_time = time.mktime(datetime.datetime.strptime(item[0], "%Y-%m-%dT%H:%M:%S.%fZ").timetuple())
+		item_time = time.mktime(datetime.datetime.strptime(item[0], "%Y-%m-%dT%H:%M:%SZ").timetuple())
 		sorted_data.append((item_time, item[1]["job_progress"] * 100, item[1]["replicas"], item[1]["error"], item[1]["time_progress"]))
 
 	sorted_data.sort(key=lambda x: x[0])
@@ -76,9 +84,9 @@ if __name__ == "__main__":
 		sorted_data = []
 	
 		for item in execution_result.items():
-			item_time = time.mktime(datetime.datetime.strptime(item[0], "%Y-%m-%dT%H:%M:%S.%fZ").timetuple())
-			#item_time = time.mktime(datetime.datetime.strptime(item[0], "%Y-%m-%dT%H:%M:%SZ").timetuple())
-			sorted_data.append((item_time, item[1]["job_progress"] * 100))
+			#item_time = time.mktime(datetime.datetime.strptime(item[0], "%Y-%m-%dT%H:%M:%S.%fZ").timetuple())
+			item_time = time.mktime(datetime.datetime.strptime(item[0], "%Y-%m-%dT%H:%M:%SZ").timetuple())
+			sorted_data.append((item_time, item[1]["job_progress"] * 100, item[1]["replicas"], item[1]["error"], item[1]["time_progress"]))
 	
 		sorted_data.sort(key=lambda x: x[0])
 	
@@ -88,7 +96,6 @@ if __name__ == "__main__":
 		last_progress = 0
 		last_time = 0
 		interval = 0
-		jpps_array = []
 	
 		for item in sorted_data:
 			progress = item[1]
@@ -103,20 +110,18 @@ if __name__ == "__main__":
 				jpps = (progress - last_progress) / interval
 	
 			last_progress = progress
-	
-			jpps_array.append(jpps)
-			avg_jpps = sum(jpps_array) / len(jpps_array)
-	
+		
 			model = {
 				"time": time_now,
 				"job_progress": progress,
-				"avg_jpps": avg_jpps,
-				"completed": progress,
-				"setpoint": 0,
-				"avg_setpoint": 0
+				"jpps": jpps,
+				"replicas": item[2],
+				"error": item[3],
+				"setpoint": 0
 			}
 	
 			data_to_plot.append(model)
-	
+
 		print("100% on {} seconds.".format(last_time))
+		print(data_to_plot)
 		generate_plots(data_to_plot)

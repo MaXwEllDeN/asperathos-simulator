@@ -1,10 +1,13 @@
 import simpy
-from aspqueue import Queue
-from workermanager import WorkerManager
-from pidcontroller import PIDController
-from aspplots import generate_plots
+
+from modules.aspqueue import Queue
+from modules.workermanager import WorkerManager
+from modules.pidcontroller import PIDController
+from modules.aspplots import generate_plots
 
 import argparse
+
+SIMULATION_TIME = 150
 
 URL_WORKLOAD_327 = "https://gist.githubusercontent.com/MaXwEllDeN/\
 2a1b9bb13dae44241e358e14b585da6f/raw/654c4f29af5d751ff0a9079b5be72305175ad501/workload327.txt"
@@ -28,16 +31,15 @@ def getMonitorData():
 def monitor(env, queue, wmanager):
     desired_time = 15 # seconds
 
-    # Process variable: Jp/s    
+    # Process variable: Jp/s
     starting_time = env.now
-    simulation_data = []
 
     jpps = 0 # Job progress per second
 
+    setpoint = 100 / desired_time # wanted_jpps
+
     last_progress = 0
     execution_time = 0
-
-    setpoint = 100 / desired_time # wanted_jpps
   
     while True:
         progress = queue.get_progress()
@@ -101,15 +103,29 @@ def pid_controller(env, wmanager):
 
         yield env.timeout(CONTROLLER_ACTUATION_TIME)
 
-def main():
-    SIMULATION_TIME = 150
+def default_controller(env, wmanager, step=1):
+    data = getMonitorData()[-1]
+
+    for _ in range(0, step):
+        wmanager.launch_replica()
+
+    while data["job_progress"] < 100:
+        data = getMonitorData()[-1]
+
+        yield env.timeout(CONTROLLER_ACTUATION_TIME)
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("step", help="number of worker replicas that should be deployed", type=int)
+    args = parser.parse_args()
 
     env = simpy.Environment()
-    queue = Queue(URL_WORKLOAD_327)
+    queue = Queue(URL_WORKLOAD_800)
 
     wmanager = WorkerManager(env, queue)
     env.process(monitor(env, queue, wmanager))
-    env.process(pid_controller(env, wmanager))
+
+    env.process(default_controller(env, wmanager, args.step))
 
     try:
         env.run(until=SIMULATION_TIME)
@@ -118,14 +134,7 @@ def main():
 
     generate_plots(MONITOR_DATA)
 
-if __name__ == "__main__":
-    main()
     """
-    parser = argparse.ArgumentParser()
-    #parser.add_argument("execution_time", help="desired execution time", type=int)
-    parser.add_argument("replicas", help="number of worker replicas that should be deployed", type=int)
-    parser.add_argument("hit_rate", help="probability of successfully processing an item", type=int)
-    args = parser.parse_args()
 
     if (args.hit_rate <= 0 or args.hit_rate > 100):
         print("hit_rate must be between 1 and 100 percent")
