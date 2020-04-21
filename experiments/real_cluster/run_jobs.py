@@ -9,18 +9,25 @@ from aspplots import generate_plots
 SUBMIT_ENDPOINT = "http://0.0.0.0:1500/submissions"
 REPORT_ENDPOINT = "http://0.0.0.0:1500/submissions/{}/report"
 
-URL_WORKLOAD_327 = "https://gist.githubusercontent.com/MaXwEllDeN/\
-2a1b9bb13dae44241e358e14b585da6f/raw/654c4f29af5d751ff0a9079b5be72305175ad501/workload327.txt"
 
-URL_WORKLOAD_800 = "https://gist.githubusercontent.com/MaXwEllDeN/\
+WORKLOADS = ["https://gist.githubusercontent.com/MaXwEllDeN/\
+2a1b9bb13dae44241e358e14b585da6f/raw/654c4f29af5d751ff0a9079b5be72305175ad501/workload327.txt",
+
+"https://gist.githubusercontent.com/MaXwEllDeN/\
 88f6975f8f089b69a4a1d530e9b77236/raw/4b2b6fc64177c5232dc4e67703d6a350e7fdee39/workload800.txt"
+]
+
+# WORKLOADS
+# 0: 327 items
+# 1: 800 items
 
 parser = argparse.ArgumentParser()
 parser.add_argument("step", help="Step amplitude.", type=int)
+parser.add_argument("workload", help="Workload.", type=int)
 parser.add_argument("dir", help="Directory file.")
 parser.add_argument("plot")
 
-def submit_job(step=1):
+def submit_job(step, workload_url):
 	job_json = {'plugin': 'kubejobs', 'plugin_info': {'password': 'senha', 'username': 'admin', 'control_plugin': 'kubejobs', 'enable_visualizer': True, 'monitor_info': {'expected_time': 20}, 'env_vars': {}, 'img': 'maxwellden/quickstart:demo', 'redis_workload': '', 'visualizer_info': {'datasource_type': 'influxdb'}, 'init_size': 1, 'job_resources_lifetime': 800, 'visualizer_plugin': 'k8s-grafana', 'enable_detailed_report': True, 'cmd': ['python', '/app/run.py'], 'control_parameters': {'metric_source': 'redis', 'min_rep': 7, 'trigger_up': 0, 'actuation_size': 1, 'schedule_strategy': 'default', 'actuator': 'k8s_replicas', 'trigger_down': 0, 'max_size': 10, 'heuristic_options': {'derivative_gain': 0, 'proportional_gain': 0.1, 'integral_gain': 0}, 'check_interval': 5, 'max_rep': 7}, 'monitor_plugin': 'kubejobs'}, 'enable_auth': False}
 
 	job_json["plugin_info"]["control_parameters"]["min_rep"] = step
@@ -28,7 +35,7 @@ def submit_job(step=1):
 	job_json["plugin_info"]["control_parameters"]["actuation_size"] = step	
 	job_json["plugin_info"]["control_parameters"]["check_interval"] = 1
 	#job_json["plugin_info"]["control_parameters"]["check_interval"] = 0.5 <- Asperathos will automatically round down to zero
-	job_json["plugin_info"]["redis_workload"] = URL_WORKLOAD_800
+	job_json["plugin_info"]["redis_workload"] = workload_url
         
 	r = requests.post(SUBMIT_ENDPOINT, json=job_json)
 
@@ -67,7 +74,7 @@ def check_report(job_id):
 if __name__ == "__main__":
 	args = parser.parse_args()
 
-	job_id = submit_job(args.step)
+	job_id = submit_job(args.step, WORKLOADS[args.workload])
 	execution_result = False
 
 	print("Running with step = {}...".format(args.step))
@@ -108,6 +115,8 @@ if __name__ == "__main__":
 	
 			if interval > 0:
 				jpps = (progress - last_progress) / interval
+				# For some reason Asperathos is returning a non-constant interval
+				#jpps = (progress - last_progress) / 2
 	
 			last_progress = progress
 		
@@ -121,6 +130,9 @@ if __name__ == "__main__":
 			}
 	
 			data_to_plot.append(model)
+
+			if progress == 100:
+				break
 
 		print("100% on {} seconds.".format(last_time))
 		print(data_to_plot)

@@ -9,15 +9,21 @@ import argparse
 
 SIMULATION_TIME = 150
 
-URL_WORKLOAD_327 = "https://gist.githubusercontent.com/MaXwEllDeN/\
-2a1b9bb13dae44241e358e14b585da6f/raw/654c4f29af5d751ff0a9079b5be72305175ad501/workload327.txt"
+WORKLOADS = ["https://gist.githubusercontent.com/MaXwEllDeN/\
+2a1b9bb13dae44241e358e14b585da6f/raw/654c4f29af5d751ff0a9079b5be72305175ad501/workload327.txt",
 
-URL_WORKLOAD_800 = "https://gist.githubusercontent.com/MaXwEllDeN/\
+"https://gist.githubusercontent.com/MaXwEllDeN/\
 88f6975f8f089b69a4a1d530e9b77236/raw/4b2b6fc64177c5232dc4e67703d6a350e7fdee39/workload800.txt"
+]
+
+# WORKLOADS
+# 0: 327 items
+# 1: 800 items
 
 KP, KI, KD = 0.1, 0.1, 0
 
 CONTROLLER_ACTUATION_TIME = 3
+
 MONITOR_CHECK_INTERVAL = 2
 
 MONITOR_DATA = []
@@ -36,6 +42,8 @@ def monitor(env, queue, wmanager):
 
     jpps = 0 # Job progress per second
 
+    decreasing = False
+
     setpoint = 100 / desired_time # wanted_jpps
 
     last_progress = 0
@@ -43,7 +51,16 @@ def monitor(env, queue, wmanager):
   
     while True:
         progress = queue.get_progress()
-        jpps = (progress - last_progress) / MONITOR_CHECK_INTERVAL
+        jpps_now = (progress - last_progress) / MONITOR_CHECK_INTERVAL
+        
+        if jpps_now < jpps:
+            decreasing = True
+        else:
+            decreasing = False
+        
+        if (jpps_now != 0) or (jpps_now != 0 and decreasing):
+            jpps = jpps_now
+
         last_progress = progress
    
         replicas = wmanager.get_replicas_count()
@@ -117,10 +134,11 @@ def default_controller(env, wmanager, step=1):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("step", help="number of worker replicas that should be deployed", type=int)
+    parser.add_argument("workload", type=int)
     args = parser.parse_args()
 
     env = simpy.Environment()
-    queue = Queue(URL_WORKLOAD_800)
+    queue = Queue(WORKLOADS[args.workload])
 
     wmanager = WorkerManager(env, queue)
     env.process(monitor(env, queue, wmanager))
