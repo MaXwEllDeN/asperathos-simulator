@@ -22,7 +22,7 @@ WORKLOADS = ["https://gist.githubusercontent.com/MaXwEllDeN/\
 
 KP, KI, KD = 0.1, 0.1, 0
 
-CONTROLLER_ACTUATION_TIME = 3
+CONTROLLER_ACTUATION_TIME = 2
 
 MONITOR_CHECK_INTERVAL = 2
 

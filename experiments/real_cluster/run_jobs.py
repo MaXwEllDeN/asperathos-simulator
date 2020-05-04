@@ -32,7 +32,7 @@ def submit_job(step, workload_url):
 
 	job_json["plugin_info"]["control_parameters"]["min_rep"] = step
 	job_json["plugin_info"]["control_parameters"]["max_rep"] = step
-	job_json["plugin_info"]["control_parameters"]["actuation_size"] = step	
+	job_json["plugin_info"]["control_parameters"]["actuation_size"] = step
 	job_json["plugin_info"]["control_parameters"]["check_interval"] = 1
 	#job_json["plugin_info"]["control_parameters"]["check_interval"] = 0.5 <- Asperathos will automatically round down to zero
 	job_json["plugin_info"]["redis_workload"] = workload_url
