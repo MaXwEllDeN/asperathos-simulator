@@ -10,6 +10,8 @@ class WorkerManager:
     env = None
     queue = None
     hit_rate = None
+    max_replicas = 1
+    min_replicas = 1
     __workers = []
 
     def __init__(self, env, queue, hit_rate=100):
@@ -17,23 +19,39 @@ class WorkerManager:
         self.queue = queue
         self.hit_rate = hit_rate
 
-    def launch_replica(self):
-        w = self.env.process(self.worker())
-        self.__workers.append(w)
+    def launch_replicas(self, amount):
+        for _ in range(0, amount):
+            if self.get_replicas_count() >= self.max_replicas:
+                break
+            else:
+                w = self.env.process(self.worker())
+                self.__workers.append(w)
+
+    def remove_replicas(self, amount):
+        for _ in range(0, amount):
+            if self.get_replicas_count() <= self.min_replicas:
+                break
+            else:
+                if len(self.__workers) > 0:
+                    w = self.__workers.pop()
+                    w.interrupt("Finish")
+
+    def set_max_replicas(self, replicas):
+        self.max_replicas = replicas
         
-        return w
-
-    def remove_replica(self):
-        try:
-            if len(self.__workers) > 0:
-                w = self.__workers.pop()
-                w.interrupt("Finish")
-        except Exception as e:
-            pass
-
+    def set_min_replicas(self, replicas):
+        self.min_replicas = replicas
 
     def get_replicas_count(self):
         return len(self.__workers)
+
+    def adjust_resources(self, new_res):
+        num_replicas = self.get_replicas_count()
+
+        if num_replicas > new_res:
+            self.remove_replicas(num_replicas - new_res)
+        elif num_replicas < new_res:
+            self.launch_replicas(new_res - num_replicas)
 
     def __process_item(self, item):
         url = item.content
