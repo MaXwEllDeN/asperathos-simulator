@@ -5,11 +5,19 @@ from numpy import genfromtxt
 import matplotlib.pyplot as plt
 
 LARGER_STEP = 12
-WORKLOAD = 800
+WORKLOAD = 327
 EXP_DIR = f"/home/maxwell/workspace/lsd/asperathos-simulator/experiments/real_cluster/output/wl{WORKLOAD}"
 
 # Execution times on simulator
-data_simu = [148, 80, 54, 40, 32, 28, 24, 20, 18, 16, 16, 14]
+data_simu_800 = [148, 80, 54, 40, 32, 28, 24, 20, 18, 16, 16, 14]
+data_simu_327 = [66, 34, 24, 18, 16, 14, 12, 10, 10, 12, 12, 12]
+
+data_simu = []
+
+if WORKLOAD == 327:
+    data_simu = data_simu_327
+elif WORKLOAD == 800:
+    data_simu_800
 
 # width of the bars
 barWidth = 0.1
@@ -64,7 +72,6 @@ if __name__ == "__main__":
     for index in range(len(data)):
         data[index] = scipy.stats.mstats.winsorize(data[index], limits=[0.05, 0.05])
     """
-    print(data)
 
     # Choose the height of the blue bars
     bars_exp = [avg(x) for x in data]
