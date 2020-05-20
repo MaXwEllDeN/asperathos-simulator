@@ -17,7 +17,7 @@ data_simu = []
 if WORKLOAD == 327:
     data_simu = data_simu_327
 elif WORKLOAD == 800:
-    data_simu_800
+    data_simu = data_simu_800
 
 # width of the bars
 barWidth = 0.1
