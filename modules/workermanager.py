@@ -14,10 +14,16 @@ class WorkerManager:
     min_replicas = 1
     __workers = []
 
-    def __init__(self, env, queue, hit_rate=100):
+    def __init__(self, env, queue, worker, max_replicas=1, min_replicas=1, hit_rate=100):
         self.env = env
         self.queue = queue
         self.hit_rate = hit_rate
+        self.max_replicas = max_replicas
+        self.min_replicas = min_replicas
+        if worker.lower() == "batch":
+            self.worker = self.batch_worker
+        else:
+            self.worker = self.stream_worker
 
     def launch_replicas(self, amount):
         for _ in range(0, amount):
@@ -34,7 +40,9 @@ class WorkerManager:
             else:
                 if len(self.__workers) > 0:
                     w = self.__workers.pop()
-                    w.interrupt("Finish")
+
+                    if (w.is_alive):
+                        w.interrupt("Finish")
 
     def set_max_replicas(self, replicas):
         self.max_replicas = replicas
@@ -53,6 +61,7 @@ class WorkerManager:
         elif num_replicas < new_res:
             self.launch_replicas(new_res - num_replicas)
 
+
     def __process_item(self, item):
         url = item.content
 
@@ -63,7 +72,9 @@ class WorkerManager:
         else:
             return False
 
-    def worker(self):
+    def batch_worker(self):
+        item = None
+
         try:
             while self.queue.get_progress() < 100:            
                 item = self.queue.get_item_to_process()
@@ -80,4 +91,27 @@ class WorkerManager:
 
                 yield self.env.timeout(self.PROCESSING_TIME)
         except simpy.exceptions.Interrupt:
-            pass
+            if item != None:
+                self.queue.rewind_item(item)
+
+    def stream_worker(self):
+        item = None
+
+        try:
+            while True:            
+                item = self.queue.get_item_to_process()
+
+                if item == None:
+                    continue
+
+                status = self.__process_item(item)
+
+                if status:
+                    self.queue.complete_item(item)
+                else:
+                    self.queue.rewind_item(item)
+
+                yield self.env.timeout(self.PROCESSING_TIME)
+        except simpy.exceptions.Interrupt:
+            if item != None:
+                self.queue.rewind_item(item)
