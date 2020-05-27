@@ -44,6 +44,8 @@ class Queue:
             return item
 
     def __load_workload(self, url):
+        print("Fetching workload...")
+
         req = requests.get(url)
 
         id_counter = 0

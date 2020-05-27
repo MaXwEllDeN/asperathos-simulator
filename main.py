@@ -1,141 +1,154 @@
-from aspqueue import Queue
-from pidcontroller import PIDController
-from workermanager import WorkerManager
-from aspplots import generate_plots
+import simpy
 
-from numpy import absolute
-import threading
+from modules.aspqueue import Queue
+from modules.workermanager import WorkerManager
+from modules.pidcontroller import PIDController
+from modules.aspplots import generate_plots
+
 import argparse
-import requests
-import time
 
-URL_WORKLOAD_327 = "https://gist.githubusercontent.com/MaXwEllDeN/\
-2a1b9bb13dae44241e358e14b585da6f/raw/654c4f29af5d751ff0a9079b5be72305175ad501/workload327.txt"
+SIMULATION_TIME = 200
 
-URL_WORKLOAD_800 = "https://gist.githubusercontent.com/MaXwEllDeN/\
+WORKLOADS = ["https://gist.githubusercontent.com/MaXwEllDeN/\
+2a1b9bb13dae44241e358e14b585da6f/raw/654c4f29af5d751ff0a9079b5be72305175ad501/workload327.txt",
+
+"https://gist.githubusercontent.com/MaXwEllDeN/\
 88f6975f8f089b69a4a1d530e9b77236/raw/4b2b6fc64177c5232dc4e67703d6a350e7fdee39/workload800.txt"
+]
 
-KP, KI, KD = 3, 1, 0.5
+# WORKLOADS
+# 0: 327 items
+# 1: 800 items
 
-""" Controller
-if replicas < round(control_action, 0):
-    increasing = int(round(control_action, 0) - replicas)
+CONTROLLER_ACTUATION_TIME = 2
+MONITOR_CHECK_INTERVAL = 2
 
-    for _ in range(0, increasing):
-        wmanager.launch_replica()
+MONITOR_DATA = []
 
-    print("{} new replicas launched.".format(increasing))
-elif replicas > round(control_action, 0):
-    decreasing = int(replicas - round(control_action, 0))
+def publishMonitorData(model):
+    MONITOR_DATA.append(model)
 
-    for _ in range(0, decreasing):
-        wmanager.remove_replica()
+def getMonitorData():
+    return MONITOR_DATA
 
-    print("Deleting {} replicas...".format(decreasing))
-"""
+def monitor(expected_time, env, queue, wmanager):
+    # Process variable: Jp/s
+    starting_time = env.now
 
-def monitor(queue, wmanager):
-    now = 0
-    starting_time = now
-    #starting_time = time.time()
-
-    #Process variable: Jp/s
-
-    simulation_data = []
-
-    print("Vamo dale")
     jpps = 0 # Job progress per second
+
+    decreasing = False
+
     last_progress = 0
-    last_completed = 0
-    interval = 2
-
-    target_time = 15.68
     execution_time = 0
-
-    jpps_array = []
-    setpoint_array = []
-    setpoint = 0
-   
+  
     while True:
         progress = queue.get_progress()
-        jpps = (progress - last_progress) / interval
-        last_progress = progress        
+        jpps_now = (progress - last_progress) / MONITOR_CHECK_INTERVAL
+        
+        if jpps_now < jpps:
+            decreasing = True
+        else:
+            decreasing = False
+        
+        if (jpps_now != 0) or (jpps_now != 0 and decreasing):
+            jpps = jpps_now
 
-        jpps_array.append(jpps)
-        avg_jpps = sum(jpps_array) / len(jpps_array)
-    
-        completed = queue.get_completed_counter()        
-        jps = (completed - last_completed) / interval
-        last_completed = completed
-
+        last_progress = progress
+   
         replicas = wmanager.get_replicas_count()
+        execution_time = env.now - starting_time
+
+        # Conventional way:
+        #setpoint = expected_time
+        #error = setpoint - jpps
+
+        # Asperathos way:
+        setpoint = execution_time / expected_time
+        ref_value = setpoint
+        error = (progress/100) - ref_value
 
         print("Progress: {}% with {} replica(s).".format(round(progress, 2), replicas))
-        print("Avg JP/s: {}".format(round(avg_jpps, 2)))
-        print("Execution Time JP/s: {}".format(round(execution_time, 2)))
+        print("Job Progress per seconds: {}".format(round(jpps, 2)))
+        print("Execution Time: {}".format(round(execution_time, 2)))
+        print("Setpoint: {}".format(round(setpoint, 2)))
+        print("-----------")
 
-        if execution_time > target_time:
-            print("We are late.")
-        else:            
-            setpoint = (100 - progress) / (target_time - execution_time)
-
-            if (absolute(setpoint) > 20):
-                setpoint = 0
-
-            setpoint_array.append(setpoint)
-            avg_setpoint = sum(setpoint_array) / len(setpoint_array)
-
-            print("Avg Setpoint JP/s: {}".format(round(setpoint, 2)))
-
-        print("--------------------")
-
-        execution_time = now - starting_time
         model = {
             "time": execution_time,
             "job_progress": progress,
-            "avg_jpps": avg_jpps,            
-            "completed": completed,         
-            "setpoint": setpoint,
-            "avg_setpoint": 0
+            "jpps": jpps,
+            "replicas": replicas,
+            "error": error,
+            "setpoint": setpoint
         }
 
-        simulation_data.append(model)
-
-        now += interval
+        publishMonitorData(model)
 
         if queue.get_progress() == 100:
             break
 
-        time.sleep(interval)
+        yield env.timeout(MONITOR_CHECK_INTERVAL)
 
     print("Execution time: {0:.2f} seconds.".format(execution_time))
-    
-    return simulation_data
+
+def pid_controller(env, wmanager):
+    # dt Must be the rating at which the error is updated
+    KP, KI, KD = 0.1, 0.1, 0
+    controller = PIDController(KP, KI, KD, MONITOR_CHECK_INTERVAL)
+
+    data = getMonitorData()[-1]
+
+    while data["job_progress"] < 100:
+        data = getMonitorData()[-1]
+        replicas = data["replicas"]
+        control_action = int(controller.work(data["error"]))
+
+        wmanager.adjust_resources(control_action)
+
+        yield env.timeout(CONTROLLER_ACTUATION_TIME)
+
+def default_controller(env, wmanager):
+    DELAY_TO_CHANGE_REPLICAS = 5
+
+    ACTUATION_SIZE = 2
+    MAX_REPLICAS = 10
+    TRIGGER_UP = 0
+    TRIGGER_DOWN = 0
+
+    wmanager.adjust_resources(1)
+    wmanager.set_max_replicas(MAX_REPLICAS)
+
+    yield env.timeout(DELAY_TO_CHANGE_REPLICAS)
+
+    data = getMonitorData()[-1]
+
+    while data["job_progress"] < 100:
+        data = getMonitorData()[-1]
+
+        if data["error"] > 0 and data["error"] >= TRIGGER_DOWN:
+            wmanager.adjust_resources(data["replicas"] - ACTUATION_SIZE)
+        elif data["error"] < 0 and abs(data["error"]) >= TRIGGER_UP:
+            wmanager.adjust_resources(data["replicas"] + ACTUATION_SIZE)
+
+        yield env.timeout(CONTROLLER_ACTUATION_TIME)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    #parser.add_argument("execution_time", help="desired execution time", type=int)
-    parser.add_argument("replicas", help="number of worker replicas that should be deployed", type=int)
-    parser.add_argument("hit_rate", help="probability of successfully processing an item", type=int)
+    parser.add_argument("expected_time", help="Expected execution time.", type=int)    
+    parser.add_argument("workload", type=int)
     args = parser.parse_args()
 
-    if (args.hit_rate <= 0 or args.hit_rate > 100):
-        print("hit_rate must be between 1 and 100 percent")
-        exit()
+    env = simpy.Environment()
+    queue = Queue(WORKLOADS[args.workload])
 
-    print("Vamo dale")
+    wmanager = WorkerManager(env, queue)
+    env.process(monitor(args.expected_time, env, queue, wmanager))
+    env.process(default_controller(env, wmanager))
 
     try:
-        queue = Queue(URL_WORKLOAD_327)
-        wmanager = WorkerManager(queue, hit_rate=args.hit_rate)
-
-        for _ in range(0, args.replicas):
-            wmanager.launch_replica()
-
-        simulation_data = monitor(queue, wmanager)
-
-        generate_plots(simulation_data)
+        env.run(until=SIMULATION_TIME)
     except KeyboardInterrupt:
         print("Bye bye")
 
-# Execution time: 161.22 seconds.
+    generate_plots(f"Simulation for expected time = {args.expected_time} seconds", MONITOR_DATA)
