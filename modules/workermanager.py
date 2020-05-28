@@ -104,7 +104,7 @@ class WorkerManager:
         item = None
 
         try:
-            while True:            
+            while self.running:            
                 item = self.queue.get_item_to_process()
 
                 if item != None:
@@ -124,7 +124,7 @@ class WorkerManager:
                     else:
                         self.queue.rewind_item(item)
 
-                yield self.env.timeout(self.PROCESSING_TIME)
+                yield self.env.timeout(0.777)
         except simpy.exceptions.Interrupt:
             if item != None:
                 self.queue.rewind_item(item)

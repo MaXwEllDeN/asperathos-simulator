@@ -8,7 +8,7 @@ from modules.aspplots import generate_plots
 
 from modules.utils import PersistenceManager
 
-SIMULATION_TIME = 200
+SIMULATION_TIME = 1200
 MAX_REPLICAS = 10
 MIN_REPLICAS = 1
 

@@ -136,7 +136,11 @@ class Queue:
         '''
 
         total_items = len(self.__items_completed) + len(self.__items_processing) + len(self.__items_waiting)
-        return 100 * len(self.__items_completed) / total_items
+
+        try:
+            return 100 * len(self.__items_completed) / total_items
+        except ZeroDivisionError:
+            return 0
 
     def get_completed_counter(self):
         '''
@@ -156,3 +160,18 @@ class Queue:
 
         self.__items_waiting.append(Item(self.__id_counter, content))
         self.__id_counter += 1
+
+    def get_waiting_items_counter(self):
+        '''
+            Returns the number of items waiting to be processed
+        '''
+
+        return len(self.__items_waiting)
+
+    def get_total_items_counter(self):
+        '''
+            Returns the number of items on the queue
+        '''
+
+        total_items = len(self.__items_completed) + len(self.__items_processing) + len(self.__items_waiting)
+        return total_items

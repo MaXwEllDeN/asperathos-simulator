@@ -1,5 +1,4 @@
 MONITOR_CHECK_INTERVAL = 2
-CONTROLLER_ACTUATION_TIME = 2
 
 def debug_msg(msg):
     print(f"[MONITOR]: {msg}")
@@ -12,13 +11,12 @@ def batch_monitor(expected_time, env, queue, wmanager, persistence):
   
     while wmanager.is_running():
         progress = queue.get_progress()
- 
         replicas = wmanager.get_replicas_count()
         execution_time = env.now - starting_time
 
         # Conventional way:
-        #setpoint = expected_time
-        #error = setpoint - process_variable
+        # setpoint = expected_time
+        # error = setpoint - process_variable
 
         # Asperathos way:
         setpoint = execution_time / expected_time
@@ -50,7 +48,52 @@ def batch_monitor(expected_time, env, queue, wmanager, persistence):
 def stream_monitor(env, queue, wmanager, persistence):
     debug_msg("Stream monitor yet to be implemented.")
 
-    while wmanager.is_running():
-        debug_msg("I will make a cup of coffee...")
+    starting_time = 0
 
+    last_total_items = 0
+    last_completed = 0
+
+    while wmanager.is_running():
+        progress = queue.get_progress()
+        replicas = wmanager.get_replicas_count()
+        execution_time = env.now - starting_time
+        
+        completed_items = queue.get_completed_counter()
+        real_output_flux = float(completed_items - last_completed) / MONITOR_CHECK_INTERVAL
+        last_completed = completed_items
+
+        total_items = queue.get_total_items_counter()
+        input_flux = float(total_items - last_total_items) / MONITOR_CHECK_INTERVAL
+        last_total_items = total_items
+
+        main_q_size = queue.get_waiting_items_counter()
+
+        expected_output_flux = replicas/self.expected_time
+
+        model = {
+            "time": execution_time,
+            "job_progress": progress,
+            "replicas": replicas,
+            "error": 0,
+            "setpoint": 0   
+        }
+
+        debug_msg("========================")
+        #debug_msg("Error option: %s" % error_option)
+        #debug_msg("Correction term: %s" % corrector_term)
+        #debug_msg("Error: %s" % error)
+        debug_msg("Replicas: %s" % replicas)
+        debug_msg("Inserted items : %i" % total_items)
+        debug_msg("Queue size: %s" % main_q_size)
+        #debug_msg("Pods Processins: %s" % num_processing_jobs)
+        debug_msg("Items Completed: %i" % completed_items)
+        #self.LOG.log("Lease expired: %i" % lease_expired)
+        debug_msg("Input Flux : %s" % input_flux)
+        debug_msg("Real output Flux : %s" % real_output_flux)
+        #self.LOG.log("Expected output Flux : %s" % expected_output_flux)
+        #self.LOG.log("Collect period : %s" % str(self.collect_period))
+        debug_msg("Execution Time: {} seconds".format(round(execution_time, 2)))
+        debug_msg("========================")
+
+        persistence.publish(model)
         yield env.timeout(MONITOR_CHECK_INTERVAL)
