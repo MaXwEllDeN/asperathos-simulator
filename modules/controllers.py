@@ -23,15 +23,16 @@ def default_controller(env, wmanager, persistence):
 
     yield env.timeout(DELAY_TO_CHANGE_REPLICAS)
 
-    data = persistence.getData()[-1]
+    while wmanager.is_running():
+        data = persistence.getData()
 
-    while data["job_progress"] < 100:
-        data = persistence.getData()[-1]
+        if len(data) > 0:
+            data = data[-1]
 
-        if data["error"] > 0 and data["error"] >= TRIGGER_DOWN:
-            wmanager.adjust_resources(data["replicas"] - ACTUATION_SIZE)
-        elif data["error"] < 0 and abs(data["error"]) >= TRIGGER_UP:
-            wmanager.adjust_resources(data["replicas"] + ACTUATION_SIZE)
+            if data["error"] > 0 and data["error"] >= TRIGGER_DOWN:
+                wmanager.adjust_resources(data["replicas"] - ACTUATION_SIZE)
+            elif data["error"] < 0 and abs(data["error"]) >= TRIGGER_UP:
+                wmanager.adjust_resources(data["replicas"] + ACTUATION_SIZE)
 
         yield env.timeout(CONTROLLER_ACTUATION_TIME)
 
@@ -41,21 +42,23 @@ def pid_controller(env, wmanager, persistence):
     KP, KI, KD = 1, 0.14, 0
     controller = PIDController(KP, KI, KD, dt=MONITOR_CHECK_INTERVAL)
 
-    data = persistence.getData()[-1]
-
-    while data["job_progress"] < 100:
+    while wmanager.is_running():
         data = persistence.getData()[-1]
 
-        # since the asperathos way of calculating the error returns a negative
-        # value for error when we're late, we must invert the sign of received monitor error
-        # in order to adapt the magnitudes for the tradutional negative feedback loop model
+        data = persistence.getData()
 
-        new_error = -data["error"]
-        control_action = int(controller.work(new_error))
+        if len(data) > 0:
+            data = data[-1]
+            # since the asperathos way of calculating the error returns a negative
+            # value for error when we're late, we must invert the sign of received monitor error
+            # in order to adapt the magnitudes for the tradutional negative feedback loop model
 
-        debug_msg(f"Error: {new_error}")
-        debug_msg(f"Control action: {control_action}")
+            new_error = -data["error"]
+            control_action = int(controller.work(new_error))
 
-        wmanager.adjust_resources(control_action)
+            debug_msg(f"Error: {new_error}")
+            debug_msg(f"Control action: {control_action}")
+
+            wmanager.adjust_resources(control_action)
 
         yield env.timeout(CONTROLLER_ACTUATION_TIME)

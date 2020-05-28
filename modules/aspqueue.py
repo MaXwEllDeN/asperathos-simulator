@@ -1,4 +1,3 @@
-import requests
 import threading
 
 class Item:
@@ -14,24 +13,28 @@ class Item:
         return self.__id
 
 class Queue:
+    __id_counter = 0
     __items_waiting = []
     __items_completed = []
     __items_processing = []
     __lock_get = None
     __lock_processing = None
 
-    def __init__(self, url):
-        self.__load_workload(url)
+    def __init__(self, initial_list=[]):
         self.__lock_get = threading.Lock()
         self.__lock_processing = threading.Lock()
 
+        self.__load_workload(initial_list)
+
     def get_item_to_process(self):
-        """Gets a item from the waiting queue to be processed.
+        '''
+            Gets an item to be processed from the waiting queue.
         
-        :param: none.
+            :param: none.
         
-        :returns: an Item object.
-        """
+            :returns: an Item object.
+        '''
+
         with self.__lock_get:
             item = None
 
@@ -43,18 +46,20 @@ class Queue:
 
             return item
 
-    def __load_workload(self, url):
-        print("Fetching workload...")
+    def __load_workload(self, initial_list):
+        '''
+            Loads the queue workload from a given list.
+            :param: initial_list
+                a list of items to be pushed into the queue            
+            :returns: a boolean indicating whether the list was successfully loaded or not
+        '''
 
-        req = requests.get(url)
+        if len(initial_list) < 1:
+            return False
 
-        id_counter = 0
+        for content in initial_list:
+            self.push_item(content)
 
-        for url in req.text.split("\n"):            
-            self.__items_waiting.append(Item(id_counter, url))
-            id_counter += 1
-
-        print("{} items loaded.".format(len(self.__items_waiting)))
         return True
 
     def get_processing_item(self, id):
@@ -77,8 +82,18 @@ class Queue:
         return None, -1
 
     def complete_item(self, item):
-        """
-        """
+        '''
+            Removes an item from the processing queue and adds it to the
+            completed items list
+
+            :param: item
+                item to be marked as completed
+
+            :returns:
+                a boolean that indicates if the item was successfully 
+                market as completed
+        '''
+
         with self.__lock_processing:
             item, index = self.get_processing_item(item.get_id())
 
@@ -91,6 +106,16 @@ class Queue:
             return True
     
     def rewind_item(self, item):
+        '''
+            Removes an item from the processing queue and pushs it back to the
+            waiting queue
+
+            :param: item
+                item to be rewinded
+
+            :returns: a boolean that indicates if the item was successfully rewinded
+        '''
+
         with self.__lock_processing:
             item, index = self.get_processing_item(item.get_id())
 
@@ -103,22 +128,31 @@ class Queue:
             return True
 
     def get_progress(self):
+        '''
+            :param: none
+            :returns: 
+                a percentage corresponding to the ratio between the completed and
+                total queue items
+        '''
+
         total_items = len(self.__items_completed) + len(self.__items_processing) + len(self.__items_waiting)
         return 100 * len(self.__items_completed) / total_items
 
     def get_completed_counter(self):
+        '''
+            :param: none
+            :returns: the number of completed items
+        '''
+
         return len(self.__items_completed)
 
-"""
-    #Deprecated
-    def check_duplicated_completed(self):
-        duplicated = 0
-        ids = []
-        for item in self.__items_completed:
-            if (item.get_id() in ids):
-                duplicated += 1
+    def push_item(self, content):
+        '''
+            Pushs a item to the queue.
+            :param: content
+                item content to be pushed into the queue
+            :returns: nothing
+        '''
 
-            ids.append(item.get_id())
-
-        print("{} items duplicated. {} items processed.".format(duplicated, len(self.__items_completed)))
-"""
+        self.__items_waiting.append(Item(self.__id_counter, content))
+        self.__id_counter += 1

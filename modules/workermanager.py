@@ -1,6 +1,5 @@
 import time
 import simpy
-import requests
 import threading
 
 from random import randrange
@@ -10,6 +9,7 @@ class WorkerManager:
     env = None
     queue = None
     hit_rate = None
+    running = False
     max_replicas = 1
     min_replicas = 1
     __workers = []
@@ -18,11 +18,15 @@ class WorkerManager:
         self.env = env
         self.queue = queue
         self.hit_rate = hit_rate
+
         self.max_replicas = max_replicas
         self.min_replicas = min_replicas
+
+        self.running = True
+
         if worker.lower() == "batch":
             self.worker = self.batch_worker
-        else:
+        elif worker.lower() == "stream":
             self.worker = self.stream_worker
 
     def launch_replicas(self, amount):
@@ -61,16 +65,11 @@ class WorkerManager:
         elif num_replicas < new_res:
             self.launch_replicas(new_res - num_replicas)
 
+    def is_running(self):
+        return self.running
 
-    def __process_item(self, item):
-        url = item.content
-
-        #req = requests.get(url)
-
-        if randrange(0, 100) <= self.hit_rate:
-            return True
-        else:
-            return False
+    def stop(self):
+        self.running = False
 
     def batch_worker(self):
         item = None
@@ -79,15 +78,22 @@ class WorkerManager:
             while self.queue.get_progress() < 100:            
                 item = self.queue.get_item_to_process()
 
-                if item == None:
-                    continue
+                if item != None:
+                    status = False
 
-                status = self.__process_item(item)
+                    #url = item.content
+                    #req = requests.get(url)
 
-                if status:
-                    self.queue.complete_item(item)
-                else:
-                    self.queue.rewind_item(item)
+                    # Decides whether the item was successfully processed or not
+                    if randrange(0, 100) <= self.hit_rate:
+                        status = True
+                    else:
+                        status = False
+
+                    if status:
+                        self.queue.complete_item(item)
+                    else:
+                        self.queue.rewind_item(item)
 
                 yield self.env.timeout(self.PROCESSING_TIME)
         except simpy.exceptions.Interrupt:
@@ -101,15 +107,22 @@ class WorkerManager:
             while True:            
                 item = self.queue.get_item_to_process()
 
-                if item == None:
-                    continue
+                if item != None:
+                    status = False
 
-                status = self.__process_item(item)
+                    #url = item.content
+                    #req = requests.get(url)
 
-                if status:
-                    self.queue.complete_item(item)
-                else:
-                    self.queue.rewind_item(item)
+                    # Decides whether the item was successfully processed or not
+                    if randrange(0, 100) <= self.hit_rate:
+                        status = True
+                    else:
+                        status = False
+
+                    if status:
+                        self.queue.complete_item(item)
+                    else:
+                        self.queue.rewind_item(item)
 
                 yield self.env.timeout(self.PROCESSING_TIME)
         except simpy.exceptions.Interrupt:

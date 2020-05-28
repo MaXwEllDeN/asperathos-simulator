@@ -1,4 +1,5 @@
 import simpy
+import requests
 import argparse
 
 from modules.aspqueue import Queue
@@ -7,7 +8,7 @@ from modules.aspplots import generate_plots
 
 from modules.utils import PersistenceManager
 
-SIMULATION_TIME = 3600
+SIMULATION_TIME = 200
 MAX_REPLICAS = 10
 MIN_REPLICAS = 1
 
@@ -30,7 +31,7 @@ if __name__ == "__main__":
 
     # create the parser for the "stream" command
     parser_b = subparsers.add_parser("stream", help='stream application')
-    parser_b.add_argument('queue_time', choices='XYZ', help='baz help')
+    parser_b.add_argument('queue_time', type=int, help='desired queue time')
 
     parser.add_argument('-c', choices=["default", "pid"], help='Controller type', default="default")
 
@@ -39,24 +40,44 @@ if __name__ == "__main__":
 
     APP_MODE = None
 
-    if args.expected_time:
+    if "expected_time" in args:
         APP_MODE = "batch"
-    elif args.queue_time:
+    elif "queue_time" in args:
         APP_MODE = "stream"
 
     env = simpy.Environment()
-    queue = Queue(WORKLOADS[str(args.workload)])
-
-    wmanager = WorkerManager(env, queue, APP_MODE, max_replicas=MAX_REPLICAS, min_replicas=MIN_REPLICAS)
     pmanager = PersistenceManager()
+    wmanager = None
+    queue = None
 
-    # loading monitor
     if APP_MODE == "batch":
+        # loading workload from URL
+        items_from_url = []
+
+        req = requests.get(WORKLOADS[str(args.workload)])
+
+        for url in req.text.split("\n"):
+            items_from_url.append(url)
+
+        queue = Queue(items_from_url)
+        
+        wmanager = WorkerManager(env, queue, "batch", max_replicas=MAX_REPLICAS, min_replicas=MIN_REPLICAS)
+
+        # loading monitor
         from modules.monitors import batch_monitor as monitor
         env.process(monitor(args.expected_time, env, queue, wmanager, pmanager))
+
     elif APP_MODE == "stream":
         from modules.monitors import stream_monitor as monitor
-    
+        from modules.stream import populate_queue
+
+        # init empty queue
+        queue = Queue()
+        
+        wmanager = WorkerManager(env, queue, "stream", max_replicas=MAX_REPLICAS, min_replicas=MIN_REPLICAS)
+        env.process(monitor(env, queue, wmanager, pmanager))
+        env.process(populate_queue(env, queue, wmanager))
+   
     # loading controller
     if args.c == "default":
         from modules.controllers import default_controller as controller
@@ -64,6 +85,7 @@ if __name__ == "__main__":
         from modules.controllers import pid_controller as controller
 
     env.process(controller(env, wmanager, pmanager))
+
     try:
         env.run(until=SIMULATION_TIME)
     except KeyboardInterrupt:
