@@ -15,40 +15,31 @@ def batch(title, data):
         replicas_array.append(item["replicas"])
         setpoint_array.append(item["setpoint"])
 
-    plt.figure(title)
-    plt.suptitle(title)    
-    plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=None, hspace=0.5)
 
-    plt.subplot(2, 2, 1)
-    plt.plot(time_array, job_progress_array, label="Job Progress")
-    plt.text(time_array[-1]/2, 20, f"Execution time: {time_array[-1]:.2f} seconds")
-    plt.ylabel("Job Progress (%)")
+    fig, axs = plt.subplots(2, 2, constrained_layout=True)
+    fig.suptitle(title)
+
+    axs[0][0].plot(time_array, job_progress_array, label="Job Progress", linewidth=0.5)
+    axs[0][0].text(time_array[-1]/2, 20, f"Execution time: {time_array[-1]:.2f} seconds")
+    axs[0][0].set_ylabel("Job Progress (%)")
+    axs[0][0].set_xlabel("Time(s)")
+    axs[0][0].legend()
+    axs[0][0].grid(True)
+
+    axs[0][1].plot(time_array, replicas_array, label="Replicas", linewidth=0.5)
+    axs[0][1].set_xlabel("Time(s)")
+    axs[0][1].legend()
+    axs[0][1].grid(True)
     
-    plt.legend()
-    plt.xlabel("Time (s)")
-    plt.grid(True)
+    axs[1][0].plot(time_array, setpoint_array, color='green', linestyle='dashed', label="Setpoint(reference)", linewidth=0.5)
+    axs[1][0].set_xlabel("Time (s)")
+    axs[1][0].legend()
+    axs[1][0].grid(True)
 
-    plt.subplot(2, 2, 2)
-    plt.plot(time_array, replicas_array, label="Replicas")
-
-    plt.legend()
-    plt.xlabel("Time (s)")
-    plt.grid(True)
-
-    
-    plt.subplot(2, 2, 3)
-    plt.plot(time_array, setpoint_array, color='orange', linestyle='dashed', label="Setpoint(reference)")
-
-    plt.legend()
-    plt.xlabel("Time (s)")
-    plt.grid(True)
-
-    plt.subplot(2, 2, 4)
-    plt.plot(time_array, error_array, label="Error")
-
-    plt.legend()
-    plt.xlabel("Time (s)")
-    plt.grid(True)
+    axs[1][1].plot(time_array, error_array, label="Error", linewidth=0.5)
+    axs[1][1].set_xlabel("Time (s)")
+    axs[1][1].legend()    
+    axs[1][1].grid(True)
 
     plt.show()
 
@@ -68,40 +59,27 @@ def stream(title, data):
         replicas_array.append(item["replicas"])
         setpoint_array.append(item["setpoint"])
 
-    plt.figure(title)
-    plt.suptitle(title)    
-    plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=None, hspace=0.5)
+    fig, axs = plt.subplots(3, 1, constrained_layout=True)
+    fig.suptitle(title)
 
-    plt.subplot(2, 2, 1)
-    plt.plot(time_array, input_flux_array, label="Input Flux")
-    plt.plot(time_array, output_flux_array, color='orange', linestyle='dashed', label="Output Flux")
-    #plt.text(time_array[-1]/2, 20, f"Execution time: {time_array[-1]:.2f} seconds")
-    plt.ylabel("Items per second")
+    axs[0].set_title("Input and output fluxes")
+    axs[0].plot(time_array, input_flux_array, label="Input Flux", linewidth=0.5)
+    axs[0].plot(time_array, output_flux_array, color='green', linestyle='dashed', label="Output Flux", linewidth=0.5)
+    axs[0].set_ylabel("Items per second")    
+    axs[0].set_xlabel("Time(s)")
+    axs[0].grid(True)
+    axs[0].legend()
     
-    plt.legend()
-    plt.xlabel("Time (s)")
-    plt.grid(True)
+    axs[1].set_title("Replicas")
+    axs[1].plot(time_array, replicas_array, label="Replicas", linewidth=0.5)
+    axs[1].set_xlabel("Time(s)")
+    axs[1].grid(True)
+    axs[1].legend()
 
-    plt.subplot(2, 2, 2)
-    plt.plot(time_array, replicas_array, label="Replicas")
-
-    plt.legend()
-    plt.xlabel("Time (s)")
-    plt.grid(True)
-
-    
-    plt.subplot(2, 2, 3)
-    plt.plot(time_array, setpoint_array, color='orange', linestyle='dashed', label="Setpoint(reference)")
-
-    plt.legend()
-    plt.xlabel("Time (s)")
-    plt.grid(True)
-
-    plt.subplot(2, 2, 4)
-    plt.plot(time_array, error_array, label="Error")
-
-    plt.legend()
-    plt.xlabel("Time (s)")
-    plt.grid(True)
+    axs[2].set_title("Error")
+    axs[2].plot(time_array, error_array, color="red", label="Error", linewidth=0.5)
+    axs[2].set_xlabel("Time(s)")
+    axs[2].grid(True)
+    axs[2].legend()
 
     plt.show()

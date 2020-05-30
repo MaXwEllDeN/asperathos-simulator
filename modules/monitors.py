@@ -46,7 +46,7 @@ def batch_monitor(expected_time, env, queue, wmanager, persistence):
     debug_msg("Job completed with {0:.2f} seconds.".format(execution_time))
 
 def stream_monitor(queue_time, env, queue, wmanager, persistence):
-    debug_msg("Stream monitor yet to be implemented.")
+    CORRECTOR_TERM = True
 
     starting_time = 0
 
@@ -69,8 +69,15 @@ def stream_monitor(queue_time, env, queue, wmanager, persistence):
         main_q_size = queue.get_waiting_items_counter()
 
         expected_output_flux = replicas/queue_time
-        #error1 = expected_output_flux - input_flux        
+
+        #This term exist to make the queue decrease
+        corrector_term_check = True if main_q_size/queue_time > input_flux*2 else False
+
+        #error1 = expected_output_flux - input_flux
         error = real_output_flux - input_flux
+
+        if CORRECTOR_TERM and corrector_term_check:
+            error = 1
 
         model = {
             "time": execution_time,

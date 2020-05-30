@@ -3,14 +3,20 @@ import threading
 class Item:
     __id = None
     __processing_start = 0
+    insertion_time = 0
+    completed_time = 0
     content = None
 
-    def __init__(self, id, content):
+    def __init__(self, id, time_now, content):
         self.__id = id
         self.content = content
+        self.insertion_time = time_now
 
     def get_id(self):
         return self.__id
+
+    def set_completed_time(self, completed_time):
+        self.completed_time = completed_time
 
 class Queue:
     __id_counter = 0
@@ -20,10 +26,13 @@ class Queue:
     __lock_get = None
     __lock_processing = None
 
-    def __init__(self, initial_list=[]):
+    env = None
+    reprocessing_counter = 0
+
+    def __init__(self, env, initial_list=[]):
         self.__lock_get = threading.Lock()
         self.__lock_processing = threading.Lock()
-
+        self.env = env
         self.__load_workload(initial_list)
 
     def get_item_to_process(self):
@@ -100,8 +109,10 @@ class Queue:
             if item == None:
                 return False
 
+            item.set_completed_time(self.env.now)
             self.__items_processing.pop(index)
             self.__items_completed.append(item)
+
 
             return True
     
@@ -122,10 +133,14 @@ class Queue:
             if item == None:
                 return False
 
+            self.reprocessing_counter += 1
             self.__items_processing.pop(index)
             self.__items_waiting.append(item)
 
             return True
+
+    def get_reprocessing_counter(self):
+        return self.reprocessing_counter
 
     def get_progress(self):
         '''
@@ -158,7 +173,7 @@ class Queue:
             :returns: nothing
         '''
 
-        self.__items_waiting.append(Item(self.__id_counter, content))
+        self.__items_waiting.append(Item(self.__id_counter, self.env.now, content))
         self.__id_counter += 1
 
     def get_waiting_items_counter(self):

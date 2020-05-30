@@ -8,7 +8,7 @@ import modules.visualizer as visualizer
 
 from modules.utils import PersistenceManager
 
-SIMULATION_TIME = 60
+SIMULATION_TIME = 350
 MAX_REPLICAS = 20
 MIN_REPLICAS = 1
 
@@ -59,7 +59,7 @@ if __name__ == "__main__":
         for url in req.text.split("\n"):
             items_from_url.append(url)
 
-        queue = Queue(items_from_url)
+        queue = Queue(env, items_from_url)
         
         wmanager = WorkerManager(env, queue, "batch", max_replicas=MAX_REPLICAS, min_replicas=MIN_REPLICAS)
 
@@ -72,7 +72,7 @@ if __name__ == "__main__":
         from modules.stream import populate_queue
 
         # init empty queue
-        queue = Queue()
+        queue = Queue(env)
         
         wmanager = WorkerManager(env, queue, "stream", max_replicas=MAX_REPLICAS, min_replicas=MIN_REPLICAS)
         env.process(monitor(args.queue_time, env, queue, wmanager, pmanager))
