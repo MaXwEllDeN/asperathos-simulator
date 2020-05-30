@@ -124,7 +124,7 @@ class WorkerManager:
                     else:
                         self.queue.rewind_item(item)
 
-                yield self.env.timeout(0.777)
+                yield self.env.timeout(4)
         except simpy.exceptions.Interrupt:
             if item != None:
                 self.queue.rewind_item(item)

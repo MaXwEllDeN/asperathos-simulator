@@ -45,7 +45,7 @@ def batch_monitor(expected_time, env, queue, wmanager, persistence):
 
     debug_msg("Job completed with {0:.2f} seconds.".format(execution_time))
 
-def stream_monitor(env, queue, wmanager, persistence):
+def stream_monitor(queue_time, env, queue, wmanager, persistence):
     debug_msg("Stream monitor yet to be implemented.")
 
     starting_time = 0
@@ -68,14 +68,18 @@ def stream_monitor(env, queue, wmanager, persistence):
 
         main_q_size = queue.get_waiting_items_counter()
 
-        expected_output_flux = replicas/self.expected_time
+        expected_output_flux = replicas/queue_time
+        #error1 = expected_output_flux - input_flux        
+        error = real_output_flux - input_flux
 
         model = {
             "time": execution_time,
             "job_progress": progress,
             "replicas": replicas,
-            "error": 0,
-            "setpoint": 0   
+            "error": error,
+            "setpoint": real_output_flux,
+            "input_flux": input_flux,
+            "output_flux": real_output_flux
         }
 
         debug_msg("========================")

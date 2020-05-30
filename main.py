@@ -4,12 +4,12 @@ import argparse
 
 from modules.aspqueue import Queue
 from modules.workermanager import WorkerManager
-from modules.aspplots import generate_plots
+import modules.visualizer as visualizer
 
 from modules.utils import PersistenceManager
 
-SIMULATION_TIME = 1200
-MAX_REPLICAS = 10
+SIMULATION_TIME = 60
+MAX_REPLICAS = 20
 MIN_REPLICAS = 1
 
 WORKLOADS = {
@@ -75,7 +75,7 @@ if __name__ == "__main__":
         queue = Queue()
         
         wmanager = WorkerManager(env, queue, "stream", max_replicas=MAX_REPLICAS, min_replicas=MIN_REPLICAS)
-        env.process(monitor(env, queue, wmanager, pmanager))
+        env.process(monitor(args.queue_time, env, queue, wmanager, pmanager))
         env.process(populate_queue(env, queue, wmanager))
    
     # loading controller
@@ -93,6 +93,6 @@ if __name__ == "__main__":
 
     if APP_MODE == "batch":
         print("Generating plots...")
-        generate_plots(f"Simulation for expected time = {args.expected_time} seconds", pmanager.getData())
+        visualizer.batch(f"Simulation for expected time = {args.expected_time} seconds", pmanager.getData())
     elif APP_MODE == "stream":
-        pass
+        visualizer.stream(f"Simulation for queue time = {args.queue_time} seconds", pmanager.getData())
