@@ -5,19 +5,12 @@ from numpy import genfromtxt
 import matplotlib.pyplot as plt
 
 LARGER_STEP = 12
-WORKLOAD = 327
-EXP_DIR = f"/home/maxwell/workspace/lsd/asperathos-simulator/experiments/real_cluster/output/wl{WORKLOAD}"
+EXP_DIR327 = f"/home/maxwell/workspace/lsd/repos/asperathos-simulator/experiments/batch/wl327"
+EXP_DIR800 = f"/home/maxwell/workspace/lsd/repos/asperathos-simulator/experiments/batch/wl800"
 
 # Execution times on simulator
-data_simu_800 = [148, 80, 54, 40, 32, 28, 24, 20, 18, 16, 16, 14]
-data_simu_327 = [66, 34, 24, 18, 16, 14, 12, 10, 10, 12, 12, 12]
-
-data_simu = []
-
-if WORKLOAD == 327:
-    data_simu = data_simu_327
-elif WORKLOAD == 800:
-    data_simu_800
+data_simu_800 = [164, 84, 58, 46, 38, 28, 34, 28, 26, 24, 24, 24]
+data_simu_327 = [70, 38, 26, 22, 20, 16, 16, 16, 16, 16, 16, 16]
 
 # width of the bars
 barWidth = 0.1
@@ -29,7 +22,6 @@ def mean_confidence_interval(data, confidence=0.95):
     h = se * scipy.stats.t.ppf((1 + confidence) / 2., n-1)
     return h
 
- 
 def get_step_dataset(path):
     files = [f for f in glob.glob(path + "/*.csv", recursive=True)]
 
@@ -65,37 +57,52 @@ def avg(dataset):
     return value
 
 if __name__ == "__main__":
-    data = [get_step_dataset(f"{EXP_DIR}/step{i + 1}") for i in range(0, LARGER_STEP)]
+    data327 = [get_step_dataset(f"{EXP_DIR327}/step{i + 1}") for i in range(0, LARGER_STEP)]
+    avg_327 = [avg(x) for x in data327]
 
-    """
+    data800 = [get_step_dataset(f"{EXP_DIR800}/step{i + 1}") for i in range(0, LARGER_STEP)]
+    avg_800 = [avg(x) for x in data800]
+
+    #"""
     #Dealing with the outliers within a tolence of 5%:
-    for index in range(len(data)):
-        data[index] = scipy.stats.mstats.winsorize(data[index], limits=[0.05, 0.05])
-    """
+    for index in range(len(data327)):
+        data327[index] = scipy.stats.mstats.winsorize(data327[index], limits=[0.05, 0.05])
+
+    for index in range(len(data800)):
+        data800[index] = scipy.stats.mstats.winsorize(data800[index], limits=[0.05, 0.05])
+
+    #"""
 
     # Choose the height of the blue bars
-    bars_exp = [avg(x) for x in data]
+    bars_327 = [(data_simu_327[x] / avg_327[x]) * 100 for x in range(0, LARGER_STEP)]
 
-    bars_simu = [data_simu[index] for index in range(LARGER_STEP)]
+    bars_800 = [(data_simu_800[x] / avg_800[x]) * 100  for x in range(0, LARGER_STEP)]
+    #bars_simu = [data_simu_327[index] ifor index in range(LARGER_STEP)]
 
     # Choose the height of the error bars (bars1)
-    y_error = [mean_confidence_interval(x, 0.95) for x in data]
+    y_error_327 = [mean_confidence_interval(x, 0.95) for x in data327]
+    y_error_800 = [mean_confidence_interval(x, 0.95) for x in data800]
 
     # The x position of bars
-    r1 = np.arange(len(bars_exp)) * 0.5
+    r1 = np.arange(len(bars_327)) * 0.5
     r2 = [x + barWidth for x in r1]
     
     # Create blue bars
-    plt.bar(r1, bars_exp, width=barWidth, color='blue', edgecolor='black', yerr=y_error, capsize=7, label='Asperathos')
-    plt.bar(r2, bars_simu, width=barWidth, color='cyan', edgecolor='black', capsize=7, label='Simulator')
+    plt.bar(r1, bars_327, width=barWidth, color='burlywood', edgecolor='black', capsize=7, label='Workload 327')
+    plt.bar(r2, bars_800, width=barWidth, color='teal', edgecolor='black', capsize=7, label='Workload 800')
 
     # general layout
-    x_label = [f"Step {x + 1}" for x in range(len(data))]
+    x_label = [f"Step {x + 1}" for x in range(len(data327))]
+    x_ticks = [r * 0.5 + barWidth/2 for r in range(len(bars_327))]
 
-    plt.xticks([r * 0.5 + barWidth/2 for r in range(len(bars_exp))], x_label)
-    plt.ylabel("Execution time(s)")
+    plt.xticks(x_ticks, x_label)
+
+    # ploting horizontal line
+    plt.plot([0, x_ticks[-1]], [100, 100], color='red', linestyle='dashed', linewidth=0.5)
+
+    plt.ylabel("Simulation Time / Real Time")
     plt.legend()
-    plt.title(f"Average execution time for a workload of {WORKLOAD} items")
+    plt.title(f"Simulation Time as a ratio of the Real Time")
 
     # Show graphic
     plt.show()

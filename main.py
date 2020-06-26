@@ -9,7 +9,7 @@ import modules.visualizer as visualizer
 from modules.utils import PersistenceManager
 
 SIMULATION_TIME = 350
-MAX_REPLICAS = 20
+MAX_REPLICAS = 1
 MIN_REPLICAS = 1
 
 WORKLOADS = {

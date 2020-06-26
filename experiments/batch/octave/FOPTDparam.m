@@ -3,7 +3,6 @@ function [G0, G0L, T1] = FOPTDparam(h, y, L_init, DeltaT)
     Theta = zeros(1, 3);
     R = zeros(size(Theta, 2));
     f = zeros(size(Theta, 2));
-
     for k = L_init:N
         Tau = DeltaT * k;
         Phi = [h * Tau; -h; -y(k)];

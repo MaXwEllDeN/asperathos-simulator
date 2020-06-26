@@ -6,6 +6,7 @@ from random import randrange
 
 class WorkerManager:
     PROCESSING_TIME = 0.2
+    POD_STARTUP_TIME = 3
     env = None
     queue = None
     hit_rate = None
@@ -75,6 +76,8 @@ class WorkerManager:
         item = None
 
         try:
+            yield self.env.timeout(self.POD_STARTUP_TIME)
+
             while self.queue.get_progress() < 100:            
                 item = self.queue.get_item_to_process()
 
@@ -104,6 +107,8 @@ class WorkerManager:
         item = None
 
         try:
+            yield self.env.timeout(self.POD_STARTUP_TIME)
+
             while self.running:            
                 item = self.queue.get_item_to_process()
 

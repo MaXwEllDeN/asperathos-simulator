@@ -31,8 +31,8 @@ def submit_job(expected_time, workload_url):
 
 	job_json["plugin_info"]["monitor_info"]["expected_time"] = expected_time
 	job_json["plugin_info"]["control_parameters"]["min_rep"] = 1
-	job_json["plugin_info"]["control_parameters"]["max_rep"] = 10
-	job_json["plugin_info"]["control_parameters"]["actuation_size"] = 2
+	job_json["plugin_info"]["control_parameters"]["max_rep"] = 1
+	job_json["plugin_info"]["control_parameters"]["actuation_size"] = 1
 	job_json["plugin_info"]["control_parameters"]["check_interval"] = 2
 	#job_json["plugin_info"]["control_parameters"]["check_interval"] = 0.5 <- Asperathos will automatically round down to zero
 	job_json["plugin_info"]["redis_workload"] = workload_url
@@ -56,7 +56,7 @@ def save_csv(json_data, file):
 	sorted_data.sort(key=lambda x: x[0])
 
 	with open(file, "w+") as new_file:
-		new_file.write("timestamp, job_progress, replicas, error, time_progress\n")
+		new_file.write("#timestamp, job_progress, replicas, error, time_progress\n")
 		
 		for item in sorted_data:
 			new_file.write("{}, {}, {}, {}, {}\n".format(item[0], item[1], item[2], item[3], item[4]))

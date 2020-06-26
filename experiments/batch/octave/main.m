@@ -1,60 +1,72 @@
 pkg load control
 
-exp = 1;
-step_amplitude = 5;
+EXP_DIR = "data/step1";
 
-model_queue_length = 1536;
-queue_length = 800;
+model_queue_length = 327;
+queue_length = 327;
 
-[y, t, u, Ts] = loadExperimentData(exp, step_amplitude);
+experiments = dir(EXP_DIR);
+
+%% Loading experimental data to be compared with the model values
+file_name = experiments(3).name;
+[y, t, u, Ts] = loadExperimentData(strcat(EXP_DIR, "/", file_name));
+
+t = t - t(1);
 
 %% Identifying the system
-[y_id, t_id, u_id, Ts_id] = loadExperimentData(exp, 1);
+%% To identify the model, we must use an unitary step experiment data
+y_id = y;
+t_id = t;
+u_id = u;
+Ts_id = Ts;
+
+t_id = t_id - t_id(1);
 y_filtered = y_id;
+
 N = length(y_id);
-if (y_id(N - 1) == 1)
+if (y_id(N - 1) == 100)
 	y_filtered = y_id(1:(N - 1));
 end
 
-[G, L, T] = identifySystem(1, y_filtered, Ts_id)
-L
-L = abs(L);
+[G0, L, T] = identifySystem(1, y_filtered, Ts_id)
+
 %% Approximating the delay function e^-sT by Padé Coefficients
-[pade_num, pade_den] = padecoef(L, 9);
+[pade_num, pade_den] = padecoef(L, 1);
 delay = tf(pade_num, pade_den);
 
-G = tf([G], [T, 1]) * delay;
+G = tf([G0], [T, 1]) * delay;
 G = c2d(G, Ts);
 t_s_exp = 0;
 
 for i = 1:length(y)
-	if (y(i) == 1)
-		t_s_exp = t(i);
+	if (y(i) == 100)
+		t_s_exp = t(i) - t(1);
 		break;
 	end
 end
 
-t_sim = 0:Ts:t_s_exp;
+%we will double the experiment time to assure that the model will reach 100%
+
+t_sim = 0:Ts:(t_s_exp * 2);
+
 u_sim = ones(1, length(t_sim)) * step_amplitude;
 [y_sim, t_sim, x] = lsim(G, u_sim, t_sim);
-
-%t_s_model
-[~, i] = min(abs(1 - y_sim));
+[~, i] = min(abs(100 - y_sim));
 t_s_model = t_sim(i);
 
 % Expected time for given `queue_length`:
-[~, i] = min(abs(queue_length/model_queue_length - y_sim));
+[~, i] = min(abs((queue_length/model_queue_length) * 100 - y_sim));
 expected_ts = t_sim(i);
 
 fprintf('For a queue of length equal to %d, the job is expected to finish at %d seconds.\n', queue_length, expected_ts);
-
+fprintf('Exp: %03fs\n', t_s_exp);
 figure;
 subplot(2, 1, 1);
-plot(t_sim, y_sim*100, sprintf(';Model(t_s=%ds);', t_s_model), 'linestyle', '--');
+plot(t_sim, y_sim, sprintf(';Model(t_s=%ds);', t_s_model), 'linestyle', '--');
 title(sprintf('Output (Jobs completed) for step = %d replicas.', step_amplitude));
 hold on;
-plot(t, y*100, sprintf(';Experimental Data(t_s=%ds);', t_s_exp), 'color', 'g');
-ylim([0, 105]);
+plot(t, y, sprintf(';Experimental Data(t_s=%ds);', t_s_exp), 'color', 'g');
+ylim([-5, 105]);
 xlim([0, t(length(t) - 1)]);
 ylabel('Job Progress(%)');
 xlabel("Time (s)");
@@ -70,4 +82,3 @@ xlabel('Time (s)');
 ylim([0, step_amplitude + 1]);
 xlim([0, t(length(t) - 1)]);
 grid();
-

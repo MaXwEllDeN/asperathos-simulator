@@ -11,16 +11,11 @@ def debug_msg(msg):
     print(f"[CONTROLLER]: {msg}")
 
 def default_controller(env, wmanager, persistence):
-    DELAY_TO_CHANGE_REPLICAS = 5
-
     ACTUATION_SIZE = 2
     TRIGGER_UP = 0
     TRIGGER_DOWN = 0
 
     wmanager.adjust_resources(1)
-
-    yield env.timeout(DELAY_TO_CHANGE_REPLICAS)
-
     while wmanager.is_running():
         data = persistence.getData()
 
