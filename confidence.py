@@ -45,6 +45,29 @@ def get_step_dataset(path):
     
     return execution_times
 
+def get_step_dataset_delay(path):
+    files = [f for f in glob.glob(path + "/*.csv", recursive=True)]
+
+    delays = []
+
+    for f in files:
+        my_data = genfromtxt(f, delimiter=',')
+
+        start_timestamp = 0
+
+        for index in range(1, len(my_data)):
+            row = my_data[index]
+
+            if start_timestamp == 0:
+                start_timestamp = row[0]
+
+            if row[1] != 0:
+                e_time = row[0] - start_timestamp
+                delays.append(e_time)
+                break
+    
+    return delays
+
 def avg(dataset):
     value = 0
     length = len(dataset)
@@ -56,6 +79,21 @@ def avg(dataset):
 
     return value
 
+def get_avg_delay(data_steps, step=None):
+    delays = []
+
+    if step is not None:
+        dataset = data_steps[step]
+        for item in dataset:
+            print(item)
+    else:
+        for step in range(0, length(data_steps)):
+            dataset = data_steps[step]
+            for execution in dataset:
+                pass
+
+    return delays
+
 if __name__ == "__main__":
     data327 = [get_step_dataset(f"{EXP_DIR327}/step{i + 1}") for i in range(0, LARGER_STEP)]
     avg_327 = [avg(x) for x in data327]
@@ -63,7 +101,9 @@ if __name__ == "__main__":
     data800 = [get_step_dataset(f"{EXP_DIR800}/step{i + 1}") for i in range(0, LARGER_STEP)]
     avg_800 = [avg(x) for x in data800]
 
-    #"""
+    delays327 = [get_step_dataset_delay(f"{EXP_DIR327}/step{i + 1}") for i in range(0, LARGER_STEP)]
+    delays800 = [get_step_dataset_delay(f"{EXP_DIR800}/step{i + 1}") for i in range(0, LARGER_STEP)]
+
     #Dealing with the outliers within a tolence of 5%:
     for index in range(len(data327)):
         data327[index] = scipy.stats.mstats.winsorize(data327[index], limits=[0.05, 0.05])
@@ -97,12 +137,9 @@ if __name__ == "__main__":
 
     plt.xticks(x_ticks, x_label)
 
-    # ploting horizontal line
-    plt.plot([0, x_ticks[-1]], [100, 100], color='red', linestyle='dashed', linewidth=0.5)
-
     plt.ylabel("Simulation Time / Real Time")
     plt.legend()
     plt.title(f"Simulation Time as a ratio of the Real Time")
-
+    plt.grid()
     # Show graphic
     plt.show()

@@ -6,6 +6,7 @@ def generate_plots(title, data):
     job_progress_array = []
     error_array = []
     replicas_array = []
+    output_array = []
     setpoint_array = []
 
     for item in data:
@@ -13,6 +14,7 @@ def generate_plots(title, data):
         job_progress_array.append(item["job_progress"])
         error_array.append(item["error"])
         replicas_array.append(item["replicas"])
+        output_array.append(item["output_flux"])
         setpoint_array.append(item["setpoint"])
 
     plt.figure(title)
@@ -37,7 +39,9 @@ def generate_plots(title, data):
 
     
     plt.subplot(2, 2, 3)
-    plt.plot(time_array, setpoint_array, color='orange', linestyle='dashed', label="Setpoint(reference)")
+    plt.plot(time_array, output_array, label="Output Flux")
+    plt.plot(time_array, setpoint_array, color='orange', linestyle='dashed', label="Setpoint")
+    plt.ylabel("Items/second")
 
     plt.legend()
     plt.xlabel("Time (s)")

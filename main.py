@@ -9,7 +9,7 @@ import modules.visualizer as visualizer
 from modules.utils import PersistenceManager
 
 SIMULATION_TIME = 350
-MAX_REPLICAS = 1
+MAX_REPLICAS = 10
 MIN_REPLICAS = 1
 
 WORKLOADS = {
@@ -33,7 +33,7 @@ if __name__ == "__main__":
     parser_b = subparsers.add_parser("stream", help='stream application')
     parser_b.add_argument('queue_time', type=int, help='desired queue time')
 
-    parser.add_argument('-c', choices=["default", "pid"], help='Controller type', default="default")
+    parser.add_argument('c', choices=["default", "pid"], help='Controller type', default="default")
 
     # parse argument lists
     args = parser.parse_args()

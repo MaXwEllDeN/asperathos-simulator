@@ -2,36 +2,52 @@ pkg load control
 
 EXP_DIR = "data/step1";
 
+step_amplitude = 1;
 model_queue_length = 327;
 queue_length = 327;
 
 experiments = dir(EXP_DIR);
 
-%% Loading experimental data to be compared with the model values
-file_name = experiments(3).name;
-[y, t, u, Ts] = loadExperimentData(strcat(EXP_DIR, "/", file_name));
+G0_array = [];
+L_array = [];
+T_array = [];
 
-t = t - t(1);
+for i = 3:3
+	file_name = experiments(i).name;
 
-%% Identifying the system
-%% To identify the model, we must use an unitary step experiment data
-y_id = y;
-t_id = t;
-u_id = u;
-Ts_id = Ts;
+	[y, t, u, Ts] = loadExperimentData(strcat(EXP_DIR, "/", file_name));
 
-t_id = t_id - t_id(1);
-y_filtered = y_id;
+	t = t - t(1);
 
-N = length(y_id);
-if (y_id(N - 1) == 100)
-	y_filtered = y_id(1:(N - 1));
-end
+	%% Identifying the system
+	%% To identify the model, we must use an unitary step experiment data
+	y_id = y;
+	t_id = t;
+	u_id = u;
+	Ts_id = Ts;
 
-[G0, L, T] = identifySystem(1, y_filtered, Ts_id)
+	t_id = t_id - t_id(1);
+	y_filtered = y_id;
 
-%% Approximating the delay function e^-sT by Padé Coefficients
-[pade_num, pade_den] = padecoef(L, 1);
+	N = length(y_id);
+	if (y_id(N - 1) == 100)
+		y_filtered = y_id(1:(N - 1));
+	end
+
+	[G0, L, T] = identifySystem(1, y_filtered, Ts_id)
+
+	%% Approximating the delay function e^-sT by Padé Coefficients
+
+	G0_array = [G0_array, G0];
+	L_array	= [L_array, L];
+	T_array = [T_array, T];
+endfor
+
+G = mean(G0_array);
+T = mean(T_array);
+L = mean(L_array);
+
+[pade_num, pade_den] = padecoef(L, 7);
 delay = tf(pade_num, pade_den);
 
 G = tf([G0], [T, 1]) * delay;

@@ -32,7 +32,10 @@ def default_controller(env, wmanager, persistence):
 def pid_controller(env, wmanager, persistence):
     # dt Must be the rating at which the error is updated
 
-    KP, KI, KD = 1, 0.14, 0
+    KP = 0.15713
+    KI = 6.576
+    KD = 0
+
     controller = PIDController(KP, KI, KD, dt=MONITOR_CHECK_INTERVAL)
 
     while wmanager.is_running():
