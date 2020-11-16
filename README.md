@@ -7,7 +7,7 @@
 - On the `WorkerManager` module, the `batch_worker` function mimics the real execution of a batch application.
 
 ### Execution
-`python3 main.py [-c {default,pid}] batch <expected_time> <workload>`
+`python3 main.py batch <expected_time> <workload> [-c {default,pid}]`
 
 * `expected_time`: total time expected for the job progress to be completed.
 * `workload`: initial workload to be loaded to the queue, chosen from `WORKLOADS` list.
@@ -16,7 +16,7 @@
 For streaming applications, you must implement a function to populate the queue on the `stream` module.
 
 ### Execution
-`python3 main.py [-c {default,pid}] stream <queue_time>`
+`python3 main.py stream <queue_time> [-c {default,pid}]`
 * `queue_time`: the maximum time expected that an item ideally should spend on the queue before completion. 
 
 ## Modules

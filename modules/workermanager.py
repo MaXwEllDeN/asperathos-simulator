@@ -6,7 +6,7 @@ from random import randrange
 
 class WorkerManager:
     PROCESSING_TIME = 0.2
-    POD_STARTUP_TIME = 3
+    POD_STARTUP_TIME = 5
     env = None
     queue = None
     hit_rate = None
