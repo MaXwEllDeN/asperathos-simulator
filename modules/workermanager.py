@@ -7,6 +7,7 @@ from random import randrange
 class WorkerManager:
     PROCESSING_TIME = 0.2
     POD_STARTUP_TIME = 5
+    STREAM_PROCESSING =  1
     env = None
     queue = None
     hit_rate = None
@@ -49,8 +50,14 @@ class WorkerManager:
                     if (w.is_alive):
                         w.interrupt("Finish")
 
+    def get_max_replicas(self):
+        return self.max_replicas
+
     def set_max_replicas(self, replicas):
         self.max_replicas = replicas
+        
+    def get_min_replicas(self):
+        return self.min_replicas
         
     def set_min_replicas(self, replicas):
         self.min_replicas = replicas
@@ -129,7 +136,7 @@ class WorkerManager:
                     else:
                         self.queue.rewind_item(item)
 
-                yield self.env.timeout(4)
+                yield self.env.timeout(self.STREAM_PROCESSING)
         except simpy.exceptions.Interrupt:
             if item != None:
                 self.queue.rewind_item(item)

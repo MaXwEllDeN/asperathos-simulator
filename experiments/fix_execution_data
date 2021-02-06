@@ -1,0 +1,50 @@
+#!/usr/bin/python3
+import csv
+import argparse
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("input_csv", type=str)
+    parser.add_argument("output_csv", type=str)
+
+    args = parser.parse_args()
+
+
+    executions = []
+
+    output_content = ""
+    # measurement,job_id,conf,repetition,timestamp,error,replicas,real_output_flux,
+    # expected_output_flux,input_flux,lease_expired_count,queue_size,workload    
+
+    index = -1
+    file = open(args.input_csv)
+    csv_reader = csv.reader(file)
+
+    for row in file:
+        values = row.split(",")
+        if not values[0].isnumeric():
+            continue
+
+        if float(values[4]) == 0.0:
+            index += 1
+            executions.append("timestamp, replicas, real_output_flux, input_flux, error\n")
+
+        new_line = f"{values[4]}, {values[6]}, {values[7]}, {values[9]}, {values[5]}"
+        executions[index] += new_line + "\n"
+
+
+    if index > 0:
+        for i in range(0, index + 1):
+            aux = args.output_csv.split(".")
+            new_file = f"{aux[0]}_{i + 1}.{aux[1]}"
+
+            print(f"Saving {new_file}")
+
+            with open(new_file, "w") as file:
+                file.write(executions[i])
+    else:
+
+        with open(args.output_csv, "w") as file:
+            file.write(executions[0])
+
+    print("Bye bye")

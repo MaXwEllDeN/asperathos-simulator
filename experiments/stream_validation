@@ -1,0 +1,72 @@
+#!/usr/bin/python3
+from datetime import datetime
+import matplotlib.pyplot as plt
+
+import sys
+sys.path.insert(1, "../")
+
+import modules.visualizer as visualizer
+import numpy as np
+import subprocess
+import argparse
+
+OUTPUT_FOLDER = "stream"
+HOST = "ubuntu@10.11.19.140"
+EXPERIMENTS_SCRIPT = "maxwell/repos/artigo2020-controle/znialm_manual_PI_review.py"
+EXPERIMENTS_OUTPUT = "/home/ubuntu/paper-experiments/manual-review-pid/outputs/execution.csv"
+
+#proportional = 0.0871
+#integrative = 0.9817
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("p", type=float)
+    parser.add_argument("i", type=float)
+    parser.add_argument("d", type=float)
+
+    args = parser.parse_args()
+
+    proportional = args.p
+    integrative = args.i
+    derivative = args.d
+
+    if HOST != "":
+        print(f"Running experiments script on {HOST}...")
+        subprocess.run(["ssh", HOST, EXPERIMENTS_SCRIPT, str(proportional), str(integrative), str(derivative)])
+
+        print("Copying execution output file from remote machine...")
+        subprocess.run(["scp", f"{HOST}:{EXPERIMENTS_OUTPUT}", f"{OUTPUT_FOLDER}/temp.csv"])
+
+        print("Adjusting csv file...")
+
+        now = datetime.now()
+        dt_str = now.strftime("%Hh%Mm%Ss %d-%m-%Y")        
+        new_file = f"p-{proportional}_i-{integrative}_d-{derivative} {dt_str}.csv"
+
+        print(f"{OUTPUT_FOLDER}/temp.csv")
+        subprocess.run(["./fix_execution_data", f"{OUTPUT_FOLDER}/temp.csv", f"{OUTPUT_FOLDER}/{new_file}"])
+
+        title = f"Real execution\nP:{proportional}, I: {integrative}, D: {derivative}"
+        data_array = []
+
+        #timestamp, replicas, real_output_flux, input_flux, error
+        raw_data = np.genfromtxt(f"{OUTPUT_FOLDER}/{new_file}", delimiter=",")
+
+        for item in raw_data:
+            aux = {
+                "time": item[0],
+                "replicas": item[1],
+                "input_flux": item[3],
+                "output_flux": item[2],
+                "error": item[4],
+                "setpoint": 0
+            }
+        
+            data_array.append(aux)
+
+        img_name = f"{dt_str}.png"
+        visualizer.stream(title, data_array, f"{OUTPUT_FOLDER}/figures/{img_name}")
+        print(f"Figure saved at {OUTPUT_FOLDER}/figures/{img_name}")
+
+    else:
+        print("Local execution mode not implemented yet.")

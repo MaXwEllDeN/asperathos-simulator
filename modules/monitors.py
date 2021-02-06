@@ -1,4 +1,4 @@
-MONITOR_CHECK_INTERVAL = 2
+MONITOR_CHECK_INTERVAL = 5
 
 def debug_msg(msg):
     print(f"[MONITOR]: {msg}")

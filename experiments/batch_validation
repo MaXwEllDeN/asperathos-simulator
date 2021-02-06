@@ -1,4 +1,4 @@
-#batch_validation.py
+#!/usr/bin/python3
 import glob
 import scipy.stats
 import numpy as np
@@ -10,8 +10,8 @@ SIM_EXECUTION_TIME = {
 }
 
 WORKLOADS = [
-    (327, "/home/maxwell/workspace/lsd/repos/asperathos-simulator/experiments/batch/wl327"),
-    (800, "/home/maxwell/workspace/lsd/repos/asperathos-simulator/experiments/batch/wl800")
+    (327, "experiments/batch/wl327"),
+    (800, "experiments/batch/wl800")
 ]
 
 def get_step_dataset(path):

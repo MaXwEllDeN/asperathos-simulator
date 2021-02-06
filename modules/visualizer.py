@@ -43,7 +43,7 @@ def batch(title, data):
 
     plt.show()
 
-def stream(title, data):
+def stream(title, data, save_plot=None):
     time_array = []
     error_array = []
     replicas_array = []
@@ -61,6 +61,8 @@ def stream(title, data):
 
     fig, axs = plt.subplots(3, 1, constrained_layout=True)
     fig.suptitle(title)
+    fig.set_figwidth(20)
+    fig.set_figheight(10)
 
     axs[0].set_title("Input and output fluxes")
     axs[0].plot(time_array, input_flux_array, label="Input Flux", linewidth=0.5)
@@ -82,4 +84,9 @@ def stream(title, data):
     axs[2].grid(True)
     axs[2].legend()
 
+    if save_plot is not None:
+        plt.savefig(save_plot, dpi=300)
+
     plt.show()
+
+    return fig

@@ -1,7 +1,7 @@
 from modules.pidcontroller import PIDController
 from modules.monitors import MONITOR_CHECK_INTERVAL
 
-CONTROLLER_ACTUATION_TIME = 2
+CONTROLLER_ACTUATION_TIME = 1
 # Expressed on simpy ticks
 # for simpy:
 # 1 tick =  1s
@@ -32,8 +32,8 @@ def default_controller(env, wmanager, persistence):
 def pid_controller(env, wmanager, persistence):
     # dt Must be the rating at which the error is updated
 
-    KP = 0.15713
-    KI = 6.576
+    KP = 0.9817
+    KI = 0.0871
     KD = 0
 
     controller = PIDController(KP, KI, KD, dt=MONITOR_CHECK_INTERVAL)
@@ -52,9 +52,16 @@ def pid_controller(env, wmanager, persistence):
             new_error = -data["error"]
             control_action = int(controller.work(new_error))
 
+            #total_rep = wmanager.get_replicas_count() + control_action
+            total_rep = control_action
+
+            new_rep = max(min(total_rep, wmanager.get_max_replicas()), wmanager.get_min_replicas())
+            
             debug_msg(f"Error: {new_error}")
             debug_msg(f"Control action: {control_action}")
+            debug_msg(f"New Rep: {new_rep}")
 
-            wmanager.adjust_resources(control_action)
+            wmanager.adjust_resources(new_rep)
+            #wmanager.adjust_resources(control_action)
 
         yield env.timeout(CONTROLLER_ACTUATION_TIME)
