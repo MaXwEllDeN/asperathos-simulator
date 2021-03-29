@@ -41,7 +41,7 @@ if __name__ == "__main__":
 
         now = datetime.now()
         dt_str = now.strftime("%Hh%Mm%Ss %d-%m-%Y")        
-        new_file = f"p-{proportional}_i-{integrative}_d-{derivative} {dt_str}.csv"
+        new_file = f"{dt_str}.csv"
 
         print(f"{OUTPUT_FOLDER}/temp.csv")
         subprocess.run(["./fix_execution_data", f"{OUTPUT_FOLDER}/temp.csv", f"{OUTPUT_FOLDER}/{new_file}"])

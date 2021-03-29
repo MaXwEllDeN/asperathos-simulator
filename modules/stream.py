@@ -16,7 +16,9 @@ def populate_queue(env, queue, wmanager):
     item_count = 0
     DURATION = 5 * 60
     LOOPS = 1
-    workload = [2, 4, 2, 4]
+    #workload = [1, 3, 1, 3,3]
+    #workload = [1, 3, 1, 3, 1, 3, 1, 3, 2]
+    workload = [1, 2, 2, 2, 1, 1, 3, 3, 3]
 
     cycles_per_loop = len(workload) 
     total_cycles = cycles_per_loop * LOOPS 

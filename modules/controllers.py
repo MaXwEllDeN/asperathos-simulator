@@ -36,7 +36,7 @@ def pid_controller(env, wmanager, persistence):
     KI = 0.0871
     KD = 0
 
-    controller = PIDController(KP, KI, KD, dt=MONITOR_CHECK_INTERVAL)
+    controller = PIDController(KP, KI, KD, dt=1) #dt=MONITOR_CHECK_INTERVAL)
 
     while wmanager.is_running():
         data = persistence.getData()[-1]
@@ -52,16 +52,8 @@ def pid_controller(env, wmanager, persistence):
             new_error = -data["error"]
             control_action = int(controller.work(new_error))
 
-            #total_rep = wmanager.get_replicas_count() + control_action
-            total_rep = control_action
+            total_rep = wmanager.get_replicas_count() + control_action
 
-            new_rep = max(min(total_rep, wmanager.get_max_replicas()), wmanager.get_min_replicas())
-            
-            debug_msg(f"Error: {new_error}")
-            debug_msg(f"Control action: {control_action}")
-            debug_msg(f"New Rep: {new_rep}")
-
-            wmanager.adjust_resources(new_rep)
-            #wmanager.adjust_resources(control_action)
+            wmanager.adjust_resources(total_rep)
 
         yield env.timeout(CONTROLLER_ACTUATION_TIME)
